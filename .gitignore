@@ -1,3 +1,14 @@
-build/
-.vscode/
+# C++
 *.o
+*.obj
+*.out
+*.exe
+
+# CMake
+build*/
+
+# clangd
+.clangd*/
+
+# compile commands json
+compile_commands.json

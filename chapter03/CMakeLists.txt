@@ -1,0 +1,31 @@
+add_executable(letter src/drill/letter.cpp)
+add_executable(exer_3_2 src/exercises/exer_3_2.cpp)
+add_executable(exer_3_4 src/exercises/exer_3_4.cpp)
+add_executable(exer_3_5 src/exercises/exer_3_5.cpp)
+add_executable(exer_3_6 src/exercises/exer_3_6.cpp)
+add_executable(exer_3_7 src/exercises/exer_3_7.cpp)
+add_executable(exer_3_8 src/exercises/exer_3_8.cpp)
+add_executable(exer_3_9 src/exercises/exer_3_9.cpp)
+add_executable(exer_3_10 src/exercises/exer_3_10.cpp)
+add_executable(exer_3_11 src/exercises/exer_3_11.cpp)
+
+set_target_properties(letter PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/drill)
+set_target_properties(exer_3_2 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
+set_target_properties(exer_3_4 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
+set_target_properties(exer_3_5 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
+set_target_properties(exer_3_6 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
+set_target_properties(exer_3_7 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
+set_target_properties(exer_3_8 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
+set_target_properties(exer_3_9 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
+set_target_properties(exer_3_10 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
+set_target_properties(exer_3_11 PROPERTIES
+                    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/ch03/exercises)
