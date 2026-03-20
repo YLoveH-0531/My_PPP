@@ -9,6 +9,8 @@ build*/
 
 # clangd
 .clangd*/
+.cache/
+.clang-format
 
 # compile commands json
 compile_commands.json

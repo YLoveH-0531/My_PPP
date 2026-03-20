@@ -1,0 +1,36 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch CMake Target",  // 配置名称，显示在调试下拉菜单中
+            "type": "cppdbg",                    // 调试器类型，必须是 cppdbg
+            "request": "launch",                  // 请求类型，launch 表示启动新进程
+            
+            // --- 核心配置：自动化 ---
+            // 这行代码利用 CMake Tools 插件，自动找到你当前选择的 CMake 目标的路径。
+            // 这样你更换项目或目标时，不需要手动修改这个 launch.json。
+            "program": "${command:cmake.launchTargetPath}", 
+            
+            "args": [],                           // 传递给程序的命令行参数
+            "stopAtEntry": false,                 // 是否在 main 函数入口处暂停
+            "cwd": "${workspaceFolder}",          // 程序运行时的当前工作目录
+            "environment": [],                    // 环境变量配置
+            "externalConsole": false,             // 是否在外部终端运行
+            "MIMode": "gdb",                     // 调试模式，使用 GDB
+            
+            // --- WSL 环境配置 ---
+            // 指定 WSL2 里 GDB 的路径。Clang 编译出的程序也可以用 GDB 调试。
+            "miDebuggerPath": "/usr/bin/gdb", 
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}
