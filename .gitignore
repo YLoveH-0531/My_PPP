@@ -6,11 +6,19 @@
 
 # CMake
 build*/
+bin/
+lib/
 
 # clangd
-.clangd*/
+.clangd/
+.clangd
+.cache/
+*.idx
 .cache/
 .clang-format
 
-# compile commands json
+# vs compile commands json
 compile_commands.json
+.vscode/
+!.vscode/settings.json
+!.vscode/launch.json
