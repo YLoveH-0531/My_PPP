@@ -2,7 +2,7 @@
  * @file     exer_4_6.cpp
  * @author   KaKaRot
  * @date     2026
- * @brief    PPP Chapter 4 exercise 5.
+ * @brief    PPP Chapter 4 exercise 6.
  * @details  converts a digit to its corresponding spelled-out value and in a opposed way respectively
  */
 
