@@ -7,14 +7,16 @@
  */
 
 #include <iostream>
-#include <limits>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 void calculate(unsigned long long count)
 {
 
     if(count == 0)
     {
-        std::cout << "0 grid have 0 rice\n" << std::endl;
+        std::cout << "0 grid have 0 rice\n";
         return ;
     }
 
@@ -39,6 +41,42 @@ void calculate(unsigned long long count)
     }
 }
 
+void progressLine(const std::string& line_input)
+{
+    std::stringstream ss(line_input);
+    std::string token;
+    bool anyOk = false;
+
+    while (ss >> token)
+    {
+        anyOk = true;            
+        try
+        {   
+            std::size_t pos;
+            unsigned long long data = std::stoull(token, &pos);
+            if (pos == token.size())
+            {
+                calculate(data);
+            }
+            else{
+                std::cout << token << " not a valid integer!\n";
+            }
+        }
+        catch(const std::out_of_range&)
+        {
+            std::cout << token << " has out of range!\n";
+        }
+        catch(const std::invalid_argument&)
+        {
+            std::cout << token << " not a valid integer!\n";
+        }     
+    }
+    if (!anyOk)
+    {
+        std::cout << "Data are empty!\n";
+    }
+}
+
 int main()
 {
     std::cout << "===========================================\n" ;
@@ -46,35 +84,16 @@ int main()
     std::cout << "       Enter rice number('q' to quit )     \n";
     std::cout << "===========================================\n" ;
 
-    while (true)
+    std::string line_input;
+    while (std::cout << ">" << std::flush && std::getline(std::cin, line_input))
     {
-        std::cout << ">" << std::flush;
-        unsigned long long riceNum = 0;
-        if (std::cin >> riceNum)
+        if (line_input == "q")
         {
-            //calculate(riceNum);
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            break;
         }
-        else if(std::cin.eof())
-        {
-            std::cout << "[System] Input stream isjnull, waiting for next input...\n";
-            std::cin.clear();
-            std::cout << "IO state: " << std::cin.rdstate() << "\n";
-        }
-        else{
-            std::string cmd;
-            std::cin.clear();
-            if(std::cin >> cmd && cmd == "q")
-            {
-                std::cout << "Good luck! Bye~ \n";
-                break;
-            }
-            else{
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                std::cout << "Illegal format! Re-input.\n";
-            }
-        }  
+        progressLine(line_input);
     }
+    std::cout << "Good Luck~ Bye!\n";
     return 0;
 }
 
