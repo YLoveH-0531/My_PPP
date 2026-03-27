@@ -72,3 +72,85 @@ int main()
    std::cout << "Good Luck! Bye~\n";
    return 0;
 }
+
+/* some thinking
+1. getline 是从 cin 的缓冲区读走数据放进 string，不是给 cin 送数据。cin 是数据的来源，string是数据的终点
+2. 伪代码对比：
+   getline,
+     istream& getline(istream& is, string& str, char delim = '\n')
+  {
+      str.clear();                        // 先清空目标 string
+      bool extracted = false;
+      ios_base::iostate state = goodbit;
+
+      auto* sb = is.rdbuf();              // 拿到 cin 持有的 basic_filebuf
+
+      while (true)
+      {
+          int c = sb->sbumpc();
+          //  ↑ 从 basic_filebuf 缓冲区取一个字符
+          //    如果缓冲区有字符 → 直接返回
+          //    如果缓冲区空    → 调用 underflow() → 调用 read() → 阻塞/返回
+
+          if (c == EOF)                   // underflow() 返回了 eof（read()=0）
+          {
+              state |= eofbit;            // getline 把 eofbit 写进 state
+              break;
+          }
+
+          extracted = true;
+
+          if (c == delim)                 // 找到 '\n'，正常结束
+              break;
+
+          str += static_cast<char>(c);    // 字符逐个追加到 string
+      }
+
+      if (!extracted)
+          state |= failbit;               // 一个字符都没拿到（空行+直接EOF）
+
+      is.setstate(state);                 // 把 state 写入 cin 的状态位
+      return is;
+  }
+   cin ,
+     istream& operator>>(istream& is, int& x)
+  {
+      // 1. 跳过前导空白（' ' '\t' '\n' 都跳）
+      while (true) {
+          int c = sb->sgetc();
+          if (!isspace(c)) break;
+          sb->sbumpc();           // 消耗掉这个空白字符
+      }
+
+      // 2. 逐字符读取数字，直到遇到空白或 EOF
+      string buf;
+      while (true) {
+          int c = sb->sbumpc();   // 同样走 basic_filebuf → underflow() → read()
+
+          if (c == EOF) { state |= eofbit; break; }
+          if (isspace(c)) {
+              sb->sputbackc(c);   // 把空白字符"退回"缓冲区，留给下一次读
+              break;
+          }
+          buf += c;
+      }
+
+      // 3. 把 buf 转换成目标类型
+      x = stoi(buf);
+
+      is.setstate(state);
+      return is;
+  }
+  ┌─────────────┬─────────────────────────┬───────────────────────┐
+  │             │        cin >> x         │   getline(cin, str)   │
+  ├─────────────┼─────────────────────────┼───────────────────────┤
+  │ 停止条件    │ 遇到空白字符（含 '\n'）    │ 遇到 '\n' 或 EOF      │
+  ├─────────────┼─────────────────────────┼───────────────────────┤
+  │ '\n' 的处理 │ 退回缓冲区，不消耗        │ 消耗掉，不进入 string  │
+  ├─────────────┼─────────────────────────┼───────────────────────┤
+  │ 前导空白    │ 跳过                     │ 保留                  │
+  ├─────────────┼─────────────────────────┼───────────────────────┤
+  │ EOF 处      │ 同样置 eofbit            │ 同样置 eofbit         │
+  └─────────────┴─────────────────────────┴───────────────────────┘
+
+*/
