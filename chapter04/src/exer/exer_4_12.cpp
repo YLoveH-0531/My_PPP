@@ -1,8 +1,8 @@
 /**
- * @file     exer_4_10.cpp
+ * @file     exer_4_12.cpp
  * @author   KaKaRot
  * @date     26/3/2026
- * @brief    PPP Chapter 4 exercise 10.
+ * @brief    PPP Chapter 4 exercise 12.
  * @details  Judge if a number is prime
  */
 
