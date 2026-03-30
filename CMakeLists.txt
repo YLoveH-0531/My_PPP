@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.24)
 project(My_PPP)
 
+
+# let cmake generate compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # set up the C++ standard to C++11
 set(CMAKE_CXX_STANDARD 11)
 # enforce the C++ standard requirement
 set(CMAKE_CXX_STANDARD_REQUIRED ON) 
-# let cmake generate compile_commands.json
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)  # make header files relative to the root directory
 
