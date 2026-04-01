@@ -1,9 +1,9 @@
 /**
- * @file     exer_5_4.cpp
+ * @file     exer_5_5.cpp
  * @author   KaKaRot
  * @date     31/3/2026
- * @brief    PPP Chapter 5 exer 4.
- * @details  handle error in ctok
+ * @brief    PPP Chapter 5 exer 5.
+ * @details  converts Kelvin to Celsius
  */
 
 #include "std_lib_facilities.h"
