@@ -126,7 +126,57 @@ summerize.
     ├─────────────┼─────────────────────────┼───────────────────────┤
     │ EOF 处      │ 同样置 eofbit            │ 同样置 eofbit         │
     └─────────────┴─────────────────────────┴───────────────────────┘
+6.  完整调用栈（sync_with_stdio=true，默认）
 
+  应用代码: cout << x  /  cin >> x
+      ↓
+  C++ 标准库: basic_ostream / basic_istream
+      ↓
+  C++ 标准库: basic_filebuf（无独立缓冲，转发给 C runtime）
+      ↓
+  C 标准库: FILE* stdout / FILE* stdin 缓冲区（用户空间）
+      ↓
+  系统调用: write(fd=1) / read(fd=0)
+      ↓
+  内核: tty driver / tty line discipline
 
+  FILE* 结构体核心字段
+  struct FILE {
+      int    _fileno;       // 文件描述符（stdin=0, stdout=1, stderr=2）
+      char*  _IO_buf_base;  // 缓冲区起始
+      char*  _IO_buf_end;   // 缓冲区结束
+      char*  _IO_write_ptr; // 当前写入位置
+      int    _flags;        // 缓冲模式标志
+  };
 
+7.缓冲模式决策树
+
+  程序启动时，C runtime 调用 isatty(fd),并且在整个程序运行期间都不可变：
+
+  isatty == true  → 连接终端 → 行缓冲 _IOLBF → '\n' 触发 flush
+  isatty == false → 文件/管道 → 全缓冲 _IOFBF → '\n' 不触发 flush
+
+8.sync_with_stdio(false) 的影响
+
+  std::ios::sync_with_stdio(false);
+  std::cin.tie(nullptr);
+
+  ┌─────────────────────┬───────────────────┬──────────────────┐
+  │                     │ sync=true（默认） │    sync=false    │
+  ├─────────────────────┼───────────────────┼──────────────────┤
+  │ 缓冲区归属          │ C runtime FILE*   │ C++ filebuf 自己 │
+  ├─────────────────────┼───────────────────┼──────────────────┤
+  │ '\n' 刷新 cout      │ 是（终端）        │ 否               │
+  ├─────────────────────┼───────────────────┼──────────────────┤
+  │ cin 读前 flush cout │ 是                │ 否（tie=null）   │
+  ├─────────────────────┼───────────────────┼──────────────────┤
+  │ 可混用 printf/cout  │ 可以              │ 不可以           │
+  ├─────────────────────┼───────────────────┼──────────────────┤
+  │ 性能                │ 较慢              │ 快               │
+  └─────────────────────┴───────────────────┴──────────────────┘
+
+  sync=false 后两个缓冲同时存在：
+  printf → FILE* stdout 缓冲 ──→ write(fd=1) → 终端（竞争）
+  cout   → C++ filebuf 缓冲  ──→ write(fd=1) → 终端（竞争）
+  输出顺序不可预期
 
