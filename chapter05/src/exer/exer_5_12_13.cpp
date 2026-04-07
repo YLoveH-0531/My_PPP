@@ -107,6 +107,8 @@ std::string handleInput(const std::string& line_input)
    }else {
       return std::string();
    }
+
+   return std::string();
 }
 
 void Game()
