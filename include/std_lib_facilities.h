@@ -138,7 +138,7 @@ struct Exit : runtime_error
 };
 
 // error() simply disguises throws:
-inline void error( const string& s )
+[[noreturn]]inline void error( const string& s )
 {
     throw runtime_error( s );
 }
