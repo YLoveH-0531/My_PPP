@@ -79,9 +79,39 @@ void Token_Stream::putback(Token t)
 
 double expression();
 
-int factorial()
+int factorial_cal(int n)
 {
+    if (n == 0 || n == 1) {
+        return 1;
+    }
+    int result = n;
+    while (n > 1) {
+        result *= n;
+        n--;
+    }
+    return result;
+}
 
+double factorial(double value)
+{
+    Token t = ts.get();
+    int result = static_cast<int>(value);
+    bool isFac = false;
+
+    while (true) {
+        switch (t.kind) {
+            case '!':
+            {
+                isFac = true;
+                result = factorial_cal(result);
+                t = ts.get();
+                break;
+            }
+            default:
+                ts.putback(t);
+                return isFac ? result : value ;
+        }
+    }
 }
 
 double primary()
@@ -105,15 +135,8 @@ double primary()
                 return val;
             }
             case '8':
-            {
-                double val = factorial();
-                t = ts.get();
-                if (t.kind == '!')
-                {
-                    factorial();
-                }
-                
-                return t.value;
+            {             
+                return factorial(t.value) ;
             }
             default:
                 error("primary bad token!");
