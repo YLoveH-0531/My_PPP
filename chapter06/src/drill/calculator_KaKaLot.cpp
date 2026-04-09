@@ -23,17 +23,66 @@ public:
 // get token and put back token.
 class Token_Stream{
     public:
-        Token_Stream(): full(false), t(0) { }
+        Token_Stream(): full(false), buffer(0) { }
         void putback(Token t);
         Token get();
     private:
         bool full;
-        Token t;
+        Token buffer;
 };
 
 Token_Stream ts;
 
+Token Token_Stream::get()
+{
+    if(full){
+        full = false;
+        return buffer;
+    }
+
+    char ch;
+    std::cin >> ch;
+    switch(ch)
+    {   
+        case 'q':   // q for quir
+        case ';':   // ; for output
+        case '(': case ')':
+        case '{': case '}':
+        case '!':
+        case '+': case '-': case '*': case '/':
+        {
+            return Token(ch);
+        }
+        case '.':
+        case '0': case '1': case '2': case '3': case '4': 
+        case '5': case '6': case '7': case '8': case '9':
+        {
+            double val;
+            std::cin.unget();
+            std::cin >> val;
+            return Token('8',val);
+        }
+        default:
+            error("bad token");
+    }
+}
+
+void Token_Stream::putback(Token t)
+{
+    if (full)
+    {
+        error("already have one token");
+    }
+    buffer = t;
+    full = true;
+} 
+
 double expression();
+
+int factorial()
+{
+
+}
 
 double primary()
 {
@@ -48,15 +97,28 @@ double primary()
                 if (t.kind != ')') { error("')' missing!"); }
                 return val;
             }
+            case '{':
+            {
+                double val = expression();
+                t = ts.get();
+                if (t.kind != '}') { error("'}' missing!"); }
+                return val;
+            }
             case '8':
             {
+                double val = factorial();
+                t = ts.get();
+                if (t.kind == '!')
+                {
+                    factorial();
+                }
+                
                 return t.value;
             }
             default:
                 error("primary bad token!");
         }
     }
-    
 }
 
 double term()
@@ -70,20 +132,21 @@ double term()
             {
                 left *= primary();
                 t = ts.get();
+                break;
             }
             case '/':
             {
-                t = ts.get();
-                double val = t.value;
+                double val = primary();
                 if (val == 0) { error("divition can not be zero!"); }
-                left /= term();
+                left /= val;
                 t = ts.get();
+                break;
             }
             default:
+                ts.putback(t);
                 return left;
         }
     }
-
 }
 
 double expression()
@@ -97,13 +160,16 @@ double expression()
             {
                 left += term();
                 t = ts.get();
+                break;
             }
             case '-':
             {
                 left -= term();
                 t = ts.get();
+                break;
             }
             default:
+                ts.putback(t);
                 return left;
         }
     }
@@ -112,7 +178,12 @@ double expression()
 int main()
 {
     try {
-        double val;
+        std::cout << "================================================================\n";
+        std::cout << "                  Welcome to our simple calculator              \n";
+        std::cout << "      Please enter expressions using floating-point numbers     \n";
+        std::cout << "      +,-,*,/ operators are supported, q to quit, ; to print     \n";
+        std::cout << "================================================================\n";
+        double val = 0;
         while (std::cin) {
             Token t = ts.get();
             if (t.kind == 'q') { break; }
@@ -120,8 +191,8 @@ int main()
                 std::cout << "=" << val << '\n';
             }else {
                 ts.putback(t);
+                val = expression();
             }
-            val = expression();
         }
     } catch (const std::exception& e) {
         std::cout << e.what() << '\n';
