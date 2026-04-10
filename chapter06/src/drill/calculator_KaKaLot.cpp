@@ -79,23 +79,24 @@ void Token_Stream::putback(Token t)
 
 double expression();
 
-int factorial_cal(int n)
+long long factorial_cal(int n)
 {
-    if (n == 0 || n == 1) {
-        return 1;
+    if (n < 0) { error("The value of factorial is negative!"); }
+    
+    if (n == 0 || n == 1) { return 1;}
+    
+    long long result = 1;
+    for (int i = 2; i <= n; i++){
+       result *=i;
     }
-    int result = n;
-    while (n > 1) {
-        result *= n;
-        n--;
-    }
+     
     return result;
 }
 
 double factorial(double value)
 {
     Token t = ts.get();
-    int result = static_cast<int>(value);
+    long long result = static_cast<int>(value);
     bool isFac = false;
 
     while (true) {
@@ -117,30 +118,31 @@ double factorial(double value)
 double primary()
 {
     Token t = ts.get();
-
-    while (true) {
-        switch (t.kind) {
-            case '(':
-            {
-                double val = expression();
-                t = ts.get();
-                if (t.kind != ')') { error("')' missing!"); }
-                return val;
-            }
-            case '{':
-            {
-                double val = expression();
-                t = ts.get();
-                if (t.kind != '}') { error("'}' missing!"); }
-                return val;
-            }
-            case '8':
-            {             
-                return factorial(t.value) ;
-            }
-            default:
-                error("primary bad token!");
+    switch (t.kind) {
+        case '(':
+        {
+            double val = expression();
+            t = ts.get();
+            if (t.kind != ')') { error("')' missing!"); }
+            return val;
         }
+        case '{':
+        {
+            double val = expression();
+            t = ts.get();
+            if (t.kind != '}') { error("'}' missing!"); }
+            return val;
+        }
+        case '8':
+        {             
+            return factorial(t.value) ;
+        }
+        case '-':
+        {             
+            return -primary() ;
+        }
+        default:
+            error("primary bad token!");
     }
 }
 
@@ -204,7 +206,7 @@ int main()
         std::cout << "================================================================\n";
         std::cout << "                  Welcome to our simple calculator              \n";
         std::cout << "      Please enter expressions using floating-point numbers     \n";
-        std::cout << "      +,-,*,/ operators are supported, q to quit, ; to print     \n";
+        std::cout << "      +,-,*,/ operators are supported, q to quit, ; to print    \n";
         std::cout << "================================================================\n";
         double val = 0;
         while (std::cin) {
