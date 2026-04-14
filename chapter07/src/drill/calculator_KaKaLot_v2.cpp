@@ -1,0 +1,421 @@
+/**
+ * @file     calculator_KaKaLot_v2.cpp
+ * @author   KaKaRot
+ * @date     14/4/2026
+ * @brief    write calculator program
+ * @details  calculator improvement
+ */
+
+#include <chrono>
+#include <exception>
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include "std_lib_facilities.h"
+
+// constants
+const char number = '8';       // signal that a number was found
+const char quit = 'q';         // signal that we want to quit
+const char print = ';';        // signal that we want to print the result
+const char result = '=';       // signal that a result was found
+const char prompt = '>';       // prompt for input
+const char let = 'l';          // declaration token
+const char name = 'a';         // name token
+const string declkey = "let";  // declaration keyword
+
+// declaration keyword
+// 将输入谓词化，不用处理char, 降低处理难度
+class Token{
+public:
+    Token() : kind{0} {}
+    Token(char ch) :kind{ch} { }
+    Token(char ch, double val) :kind{ch}, value{val} { } // initialize kind
+    Token(char ch, string n) :kind{ch}, name{n} { }
+    char kind;
+    double value;
+    string name;
+};
+
+class Variable{
+public:
+    std::string name;
+    double value;
+};
+
+vector<Variable> var_table;
+
+void set_value(std::string s, double d)
+{
+    for (Variable& v : var_table)
+        if (v.name == s) {
+            v.value = d;
+            return;
+        }
+    error("set: undefined variable ", s);
+}
+
+double get_value(const std::string& s)
+{
+    for (const Variable& v : var_table)
+        if (v.name == s) return v.value;
+    error("get: undefined variable ", s);
+    return 0;
+}
+
+// get token and put back token.
+class Token_Stream{
+    public:
+        Token_Stream(): full(false), buffer(0) { }
+        void putback(Token t);
+        Token get();
+        void ignore(char c);
+    private:
+        bool full;
+        Token buffer;
+};
+
+Token_Stream ts;
+
+Token Token_Stream::get()
+{
+    if(full){
+        full = false;
+        return buffer;
+    }
+
+    char ch;
+    std::cin >> ch;
+    switch(ch)
+    {   
+        case quit:    // q for quit
+        case print:   // ; for output
+        case '(': 
+        case ')':
+        case '{': 
+        case '}':
+        case '!':
+        case '+':
+        case '-': 
+        case '*': 
+        case '/': 
+        case '%':
+        case '=':
+        {
+            return Token(ch);
+        }
+        case '.':
+        case '0': case '1': case '2': case '3': case '4': 
+        case '5': case '6': case '7': case '8': case '9':
+        {
+            double val;
+            std::cin.unget();
+            std::cin >> val;
+            return Token(number, val);
+        }
+        default:
+            if (isalpha(ch)) {
+                string s;
+                s += ch;
+                while (cin.get(ch) && (isalpha(ch) || isdigit(ch))) s+=ch;
+                cin.putback(ch);
+                if (s == declkey) return Token{let}; // declaration keyword
+                return Token{name,s};
+            }
+            error("Bad token");
+    }
+}
+
+void Token_Stream::putback(Token t)
+{
+    if (full)
+    {
+        error("already have one token");
+    }
+    buffer = t;
+    full = true;
+} 
+
+void Token_Stream::ignore(char c)
+{
+    if (full && buffer.kind == c)
+    {
+        full = false;
+        return;
+    }
+    full = false;
+
+    char ch;
+    while (std::cin >> ch)
+    {
+        if (ch == c) { return; }
+    }
+}
+
+double expression();
+
+long long factorial_cal(int n)
+{
+    if (n < 0) { error("The value of factorial is negative!"); } 
+    if (n == 0 || n == 1) { return 1;}
+    if (n > 20) { error("Factorial overflow: max supported is 20!"); } 
+    long long result = 1;
+    for (int i = 2; i <= n; i++){
+       result *=i;
+    }
+     
+    return result;
+}
+
+double factorial(double value)
+{
+    Token t = ts.get();
+    long long result = static_cast<int>(value);
+    bool isFac = false;
+
+    while (true) {
+        switch (t.kind) {
+            case '!':
+            {
+                isFac = true;
+                result = factorial_cal(result);
+                t = ts.get();
+                break;
+            }
+            default:
+                ts.putback(t);
+                return isFac ? result : value ;
+        }
+    }
+}
+
+double primary()
+{
+    Token t = ts.get();
+    switch (t.kind) {
+        case '(':
+        {
+            double val = expression();
+            t = ts.get();
+            if (t.kind != ')') { error("')' missing!"); }
+            return factorial(val);
+        }
+        case '{':
+        {
+            double val = expression();
+            t = ts.get();
+            if (t.kind != '}') { error("'}' missing!"); }
+            return factorial(val);
+        }
+        case number:
+        {             
+            return factorial(t.value) ;
+        }
+        case '-':
+        {             
+            return -primary() ;
+        }
+        case '+':
+        {             
+            return primary() ;
+        }
+        case name:
+        {             
+		    return get_value(t.name);
+        }
+        default:
+            error("primary bad token!");
+    }
+}
+
+double term()
+{
+    double left = primary();
+    Token t = ts.get();
+
+    while (true) {
+        switch (t.kind) {
+            case '*':
+            {
+                left *= primary();
+                t = ts.get();
+                break;
+            }
+            case '/':
+            {
+                double val = primary();
+                if (val == 0) { error("divition can not be zero!"); }
+                left /= val;
+                t = ts.get();
+                break;
+            }
+            case '%':
+            {
+                double val = primary();
+                if (val == 0) { error("modulo can not be zero!"); }
+                left = fmod(left, val);
+                t = ts.get();
+                break;
+            }
+            default:
+                ts.putback(t);
+                return left;
+        }
+    }
+}
+
+double expression()
+{
+    double left = term();
+    Token t = ts.get();
+
+    while (true) {
+        switch (t.kind) {
+            case '+':
+            {
+                left += term();
+                t = ts.get();
+                break;
+            }
+            case '-':
+            {
+                left -= term();
+                t = ts.get();
+                break;
+            }
+            default:
+                ts.putback(t);
+                return left;
+        }
+    }
+}
+
+void clean_up_mess()
+{
+    ts.ignore(print);
+}
+
+bool is_declared(string var)
+{ // is var already in var_table?
+    for (const Variable& v : var_table)
+        if (v.name == var) return true;
+    return false;
+}
+
+double define_name(string var, double val)
+{ // add {var,val} to var_table
+    if (is_declared(var)) error(var," declared twice");
+    var_table.push_back(Variable{var,val});
+    return val;
+}
+
+double declaration()
+{
+    Token t = ts.get();
+    if (t.kind != name) error ("name expected in declaration");
+    string var_name = t.name;
+    Token t2 = ts.get();
+    if (t2.kind != '=') error("= missing in declaration of ", var_name);
+    double d = expression();
+    define_name(var_name,d);
+    return d;
+}
+
+double statement()
+{
+    Token t = ts.get();
+    switch (t.kind) {
+        case let:
+            return declaration();
+        default:
+            ts.putback(t);
+        return expression();
+    }
+}
+
+void calculate()
+{
+    std::cout << "================================================================\n";
+    std::cout << "                  Welcome to our simple calculator              \n";
+    std::cout << "      Please enter expressions using floating-point numbers     \n";
+    std::cout << "      +,-,*,/ operators are supported, q to quit, ; to print    \n";
+    std::cout << "================================================================\n";
+    while (std::cin) {
+        try
+        {
+            std::cout << prompt;
+            Token t = ts.get();
+            while (t.kind == print) t = ts.get();
+            if (t.kind == quit) { break; }
+            ts.putback(t);
+			cout << result << statement() << endl;            
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            clean_up_mess();
+        }   
+    }
+}
+
+int main()
+{
+    try {
+
+        // predefine names:
+        define_name("pi",3.1415926535);
+        define_name("e",2.7182818284);
+
+        calculate();
+        keep_window_open();
+        return 0;
+    } catch (const std::exception& e) {
+        std::cout << e.what() << '\n';
+        keep_window_open("~~");
+        return 0;
+    } catch (...) {
+        std::cout << "error happend!" << '\n';
+        keep_window_open("~~");
+        return 0;
+    }
+}
+
+/*
+Simple calculator
+Revision history:
+Revised by Bjarne Stroustrup November 2013
+Revised by Bjarne Stroustrup May 2007
+Revised by Bjarne Stroustrup August 2006
+Revised by Bjarne Stroustrup August 2004
+Originally written by Bjarne Stroustrup
+(bs@cs.tamu.edu) Spring 2004.
+This program implements a basic expression calculator.
+Input from cin; output to cout.
+The grammar for input is:
+CHAPTER 7 • COMPLETING A PROGRAM
+238
+Statement:
+Expression
+Print
+Quit
+Print:
+;
+Quit:
+q
+Expression:
+Term
+Expression + Term
+Expression – Term
+Term:
+Primary
+Term * Primary
+Term / Primary
+Term % Primary
+Primary:
+Number
+( Expression )
+– Primary
++ Primary
+Number:
+floating-point-literal
+Input comes from cin through the Token_stream called ts.
+*/
