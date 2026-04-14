@@ -6,11 +6,11 @@
  * @details  calculator improvement
  */
 
-#include <chrono>
 #include <exception>
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <string>
 #include "std_lib_facilities.h"
 
 // constants
@@ -21,7 +21,9 @@ const char result = '=';       // signal that a result was found
 const char prompt = '>';       // prompt for input
 const char let = 'l';          // declaration token
 const char name = 'a';         // name token
-const string declkey = "let";  // declaration keyword
+const char func = 'f';         // function token
+const std::string declkey = "let";  // declaration keyword
+
 
 // declaration keyword
 // 将输入谓词化，不用处理char, 降低处理难度
@@ -119,6 +121,7 @@ Token Token_Stream::get()
                 while (cin.get(ch) && (isalpha(ch) || isdigit(ch))) s+=ch;
                 cin.putback(ch);
                 if (s == declkey) return Token{let}; // declaration keyword
+                if (s == "sqrt") { return Token{func, s}; } // sqrt operator
                 return Token{name,s};
             }
             error("Bad token");
@@ -188,6 +191,27 @@ double factorial(double value)
     }
 }
 
+double functional(const std::string fun)
+{
+    Token t = ts.get();
+    switch(t.kind){
+        case '(':
+        {
+            double val = expression();
+            if (val < 0) { error("sqrt number less then zero!"); }
+            t = ts.get();
+            if (t.kind != ')') { error("')' missing!"); }
+            if (fun == "sqrt") {
+                return sqrt(factorial(val));
+            }else {
+                error("function name wrong!");
+            }
+        }
+        default:
+            error("functional bad token!");
+    }
+}
+
 double primary()
 {
     Token t = ts.get();
@@ -221,6 +245,10 @@ double primary()
         case name:
         {             
 		    return get_value(t.name);
+        }
+        case func:
+        {   
+            return functional(t.name);
         }
         default:
             error("primary bad token!");
@@ -380,42 +408,57 @@ int main()
 }
 
 /*
-Simple calculator
-Revision history:
-Revised by Bjarne Stroustrup November 2013
-Revised by Bjarne Stroustrup May 2007
-Revised by Bjarne Stroustrup August 2006
-Revised by Bjarne Stroustrup August 2004
-Originally written by Bjarne Stroustrup
-(bs@cs.tamu.edu) Spring 2004.
-This program implements a basic expression calculator.
-Input from cin; output to cout.
-The grammar for input is:
-CHAPTER 7 • COMPLETING A PROGRAM
-238
-Statement:
-Expression
-Print
-Quit
-Print:
-;
-Quit:
-q
-Expression:
-Term
-Expression + Term
-Expression – Term
-Term:
-Primary
-Term * Primary
-Term / Primary
-Term % Primary
-Primary:
-Number
-( Expression )
-– Primary
-+ Primary
-Number:
-floating-point-literal
-Input comes from cin through the Token_stream called ts.
+    Simple calculator
+
+    This program implements a basic expression calculator.
+    Input from cin; output to cout.
+
+    The grammar for input is:
+
+    Calculation:
+        Statement
+        Calculation Statement
+        Help
+        Print
+        Quit
+    Statement:
+        Declaration
+        Assignment
+        Expression
+    Declaration:
+        "let" Name "=" Expression
+        "const" Name "=" Expression
+    Assignment:
+        Name "=" Expression
+    Help:
+        "h"
+    Print:
+        ";"
+    Quit:
+        "q"
+    Expression:
+        Term
+        Expression "+" Term
+        Expression "-" Term
+    Term:
+        Primary
+        Term "*" Primary
+        Term "/" Primary
+        Term "%" Primary
+    Primary:
+        Number
+        Name
+        Function
+        "(" Expression ")"
+        "+" Primary
+        "-" Primary
+    Number:
+        floating-point-literal
+    Function:
+        Name "(" Expression ")"
+        Name "(" Expression "," Expression ")"
+    Name:
+        identifier
+
+    Input comes from cin through the Token_stream called ts.
 */
