@@ -102,6 +102,7 @@ Token Token_Stream::get()
         case '/': 
         case '%':
         case '=':
+        case ',':
         {
             return Token(ch);
         }
@@ -122,6 +123,7 @@ Token Token_Stream::get()
                 cin.putback(ch);
                 if (s == declkey) return Token{let}; // declaration keyword
                 if (s == "sqrt") { return Token{func, s}; } // sqrt operator
+                if (s == "pow") { return Token{func, s}; } // pow operator
                 return Token{name,s};
             }
             error("Bad token");
@@ -191,24 +193,51 @@ double factorial(double value)
     }
 }
 
-double functional(const std::string fun)
+double func_pow()
 {
     Token t = ts.get();
-    switch(t.kind){
+    switch (t.kind) {
+        case '(':
+        {
+            double val = expression();
+            t = ts.get();
+            if (t.kind != ',') { error("',' missing!"); }
+            double i = expression();
+            t = ts.get();
+            if (t.kind != ')') { error("')' missing!"); }
+            return pow(val, i);
+        }
+        default:
+            error("pow functional bad token!");    
+    }
+}
+
+double func_sqrt()
+{
+    Token t = ts.get();
+    switch (t.kind) {
         case '(':
         {
             double val = expression();
             if (val < 0) { error("sqrt number less then zero!"); }
             t = ts.get();
             if (t.kind != ')') { error("')' missing!"); }
-            if (fun == "sqrt") {
-                return sqrt(factorial(val));
-            }else {
-                error("function name wrong!");
-            }
+            return sqrt(val);                
         }
         default:
-            error("functional bad token!");
+            error("sqrt functional bad token!");    
+    }
+}
+
+double functional(const std::string& fun)
+{
+
+    if (fun == "sqrt") {
+        return func_sqrt();
+    }else if (fun == "pow") {
+        return func_pow();
+    }else {
+        error("function name wrong!");
     }
 }
 
