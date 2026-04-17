@@ -22,8 +22,11 @@ const char prompt = '>';       // prompt for input
 const char let = 'l';          // declaration token
 const char name = 'a';         // name token
 const char func = 'f';         // function token
+const char cons = 'c';         // constant token
 const std::string declkey = "let";  // declaration keyword
 
+// function declaration
+bool is_declared(string var);
 
 // declaration keyword
 // 将输入谓词化，不用处理char, 降低处理难度
@@ -42,14 +45,30 @@ class Variable{
 public:
     std::string name;
     double value;
+    bool constant;
 };
 
-vector<Variable> var_table;
+class Symbol_table
+{
+    public:
+        void set_value(std::string s, double d);
+        double get_value(const std::string& s);
+        bool is_declared(string var);
+        double define_name(string var, double val, const char kind);
+    private:
+        std::vector<Variable> var_table;
+};
+
+Symbol_table st;
 
 void set_value(std::string s, double d)
 {
     for (Variable& v : var_table)
         if (v.name == s) {
+            if (v.constant)
+            {
+                error("set: constant variable");
+            }
             v.value = d;
             return;
         }
@@ -122,6 +141,7 @@ Token Token_Stream::get()
                 while (cin.get(ch) && (isalpha(ch) || isdigit(ch))) s+=ch;
                 cin.putback(ch);
                 if (s == declkey) return Token{let}; // declaration keyword
+                if (s == "const") { return Token{cons}; } // constant keyword
                 if (s == "sqrt") { return Token{func, s}; } // sqrt operator
                 if (s == "pow") { return Token{func, s}; } // pow operator
                 return Token{name,s};
@@ -241,6 +261,19 @@ double functional(const std::string& fun)
     }
 }
 
+double Assignment(const std::string& var_name)
+{
+    if (!is_declared(var_name)) error("name expected in assignment");
+    Token t = ts.get();
+    if (t.kind != '=') {
+        ts.putback(t);
+        return get_value(var_name);
+    }
+    double d = expression();
+    set_value(var_name, d);
+    return d;
+}
+
 double primary()
 {
     Token t = ts.get();
@@ -273,7 +306,7 @@ double primary()
         }
         case name:
         {             
-		    return get_value(t.name);
+		    return Assignment(t.name);
         }
         case func:
         {   
@@ -358,14 +391,15 @@ bool is_declared(string var)
     return false;
 }
 
-double define_name(string var, double val)
+double define_name(string var, double val, const char kind)
 { // add {var,val} to var_table
     if (is_declared(var)) error(var," declared twice");
-    var_table.push_back(Variable{var,val});
+    bool is_const = (kind == cons);
+    var_table.push_back(Variable{var,val, is_const});
     return val;
 }
 
-double declaration()
+double declaration(const char kind)
 {
     Token t = ts.get();
     if (t.kind != name) error ("name expected in declaration");
@@ -373,7 +407,7 @@ double declaration()
     Token t2 = ts.get();
     if (t2.kind != '=') error("= missing in declaration of ", var_name);
     double d = expression();
-    define_name(var_name,d);
+    define_name(var_name,d,kind);
     return d;
 }
 
@@ -382,7 +416,8 @@ double statement()
     Token t = ts.get();
     switch (t.kind) {
         case let:
-            return declaration();
+        case cons:
+            return declaration(t.kind);
         default:
             ts.putback(t);
         return expression();
@@ -419,8 +454,8 @@ int main()
     try {
 
         // predefine names:
-        define_name("pi",3.1415926535);
-        define_name("e",2.7182818284);
+        define_name("pi",3.1415926535,true);
+        define_name("e",2.7182818284,true);
 
         calculate();
         keep_window_open();
@@ -452,13 +487,10 @@ int main()
         Quit
     Statement:
         Declaration
-        Assignment
         Expression
     Declaration:
         "let" Name "=" Expression
         "const" Name "=" Expression
-    Assignment:
-        Name "=" Expression
     Help:
         "h"
     Print:
@@ -488,6 +520,8 @@ int main()
         Name "(" Expression "," Expression ")"
     Name:
         identifier
-
+        Assignment
+    Assignment:
+        Name "=" Expression
     Input comes from cin through the Token_stream called ts.
 */
