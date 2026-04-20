@@ -3,25 +3,32 @@
  * @author   KaKaRot
  * @date     20/4/2026
  * @brief    To find max value of int type using Fibonacci numbers
- * @details  Fibonacci numbers
+ * @details  Find an approximation of that maximum number by using fibonacci().
  */
 #include "exer_8_2.h"
+#include <limits>
 
 void fibonacci(int x, int y, std::vector<int>& fac_vec, std::vector<int>::size_type size)
 {
+    long long max_int = std::numeric_limits<int>::max();
     fac_vec.push_back(x);
     fac_vec.push_back(y);
 
     for (std::vector<int>::size_type i = 0; i < size - 2; i++) {
         fac_vec.push_back(fac_vec[i+1] + fac_vec[i]);
+        if (fac_vec[i+3] > max_int) {
+            break;
+        }
     }
 
-    print("fac_vec", fac_vec, std::cout);
+    //print("fac_vec", fac_vec, std::cout);
+    std::cout << "Approximation of int maximum number is " << fac_vec[fac_vec.size()-1] << "\n";
 }
 
 int main()
 {
+    long long max_int = std::numeric_limits<int>::max();
     std::vector<int> vec;
-    fibonacci(1, 2, vec, 8);
+    fibonacci(1, 2, vec, max_int);
     return 0;
 }
