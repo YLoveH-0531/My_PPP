@@ -1,0 +1,1 @@
+All the exercises and drills are made into calculator_KaKaLot_v2.cpp. Some exercises are not done because of time issue.

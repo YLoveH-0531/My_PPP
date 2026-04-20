@@ -16,19 +16,16 @@
 // constants
 const char number = '8';       // signal that a number was found
 const char quit = 'q';         // signal that we want to quit
-const char print = ';';        // signal that we want to print the result
+const char print = '\n';       // signal that we want to print the result
 const char result = '=';       // signal that a result was found
 const char prompt = '>';       // prompt for input
 const char let = 'l';          // declaration token
 const char name = 'a';         // name token
 const char func = 'f';         // function token
 const char cons = 'c';         // constant token
+const char help = 'h';         // help token
 const std::string declkey = "let";  // declaration keyword
 
-// function declaration
-bool is_declared(string var);
-
-// declaration keyword
 // 将输入谓词化，不用处理char, 降低处理难度
 class Token{
 public:
@@ -56,12 +53,12 @@ class Symbol_table
         bool is_declared(string var);
         double define_name(string var, double val, const char kind);
     private:
-        std::vector<Variable> var_table;
+        vector<Variable> var_table;
 };
 
 Symbol_table st;
 
-void set_value(std::string s, double d)
+void Symbol_table::set_value(std::string s, double d)
 {
     for (Variable& v : var_table)
         if (v.name == s) {
@@ -75,12 +72,27 @@ void set_value(std::string s, double d)
     error("set: undefined variable ", s);
 }
 
-double get_value(const std::string& s)
+double Symbol_table::get_value(const std::string& s)
 {
     for (const Variable& v : var_table)
         if (v.name == s) return v.value;
     error("get: undefined variable ", s);
     return 0;
+}
+
+bool Symbol_table::is_declared(string var)
+{ // is var already in var_table?
+    for (const Variable& v : var_table)
+        if (v.name == var) return true;
+    return false;
+}
+
+double Symbol_table::define_name(string var, double val, const char kind)
+{ // add {var,val} to var_table
+    if (is_declared(var)) error(var," declared twice");
+    bool is_const = (kind == cons);
+    var_table.push_back(Variable{var,val, is_const});
+    return val;
 }
 
 // get token and put back token.
@@ -105,11 +117,34 @@ Token Token_Stream::get()
     }
 
     char ch;
-    std::cin >> ch;
+    while (std::cin >> std::noskipws >> ch && isspace(ch)) {
+        if (ch == '\n') {
+            return Token(print);
+        }
+    } 
+    std::cin >>std::skipws;
     switch(ch)
     {   
-        case quit:    // q for quit
-        case print:   // ; for output
+        case quit:
+        {
+            std::string s;
+            std::cin.putback(ch);          
+            std::cin >> s;
+            if (s != "quit") {
+                error("Bad token after 'q': ", s);
+            }
+            return Token(quit);
+        }
+        case help:
+        {
+            std::string s;
+            std::cin.putback(ch);          
+            std::cin >> s;
+            if (s != "help") {
+                error("Bad token after 'h': ", s);
+            }
+            return Token(help);
+        }
         case '(': 
         case ')':
         case '{': 
@@ -170,9 +205,12 @@ void Token_Stream::ignore(char c)
     full = false;
 
     char ch;
-    while (std::cin >> ch)
+    while (std::cin >> std::noskipws >> ch)
     {
-        if (ch == c) { return; }
+        if (ch == c) {
+            std::cin >> std::skipws;
+            return; 
+        }
     }
 }
 
@@ -263,14 +301,14 @@ double functional(const std::string& fun)
 
 double Assignment(const std::string& var_name)
 {
-    if (!is_declared(var_name)) error("name expected in assignment");
+    if (!st.is_declared(var_name)) error("name expected in assignment");
     Token t = ts.get();
     if (t.kind != '=') {
         ts.putback(t);
-        return get_value(var_name);
+        return st.get_value(var_name);
     }
     double d = expression();
-    set_value(var_name, d);
+    st.set_value(var_name, d);
     return d;
 }
 
@@ -384,21 +422,6 @@ void clean_up_mess()
     ts.ignore(print);
 }
 
-bool is_declared(string var)
-{ // is var already in var_table?
-    for (const Variable& v : var_table)
-        if (v.name == var) return true;
-    return false;
-}
-
-double define_name(string var, double val, const char kind)
-{ // add {var,val} to var_table
-    if (is_declared(var)) error(var," declared twice");
-    bool is_const = (kind == cons);
-    var_table.push_back(Variable{var,val, is_const});
-    return val;
-}
-
 double declaration(const char kind)
 {
     Token t = ts.get();
@@ -407,7 +430,7 @@ double declaration(const char kind)
     Token t2 = ts.get();
     if (t2.kind != '=') error("= missing in declaration of ", var_name);
     double d = expression();
-    define_name(var_name,d,kind);
+    st.define_name(var_name,d,kind);
     return d;
 }
 
@@ -424,13 +447,20 @@ double statement()
     }
 }
 
+void helphint()
+{
+    std::cout << " --This is a simple calculator that supports basic arithmetic operations (+, -, *, /, %) and functions (sqrt, pow).\n"
+              << " --You can declare variables using 'let' and constants using 'const'. \n"
+              << " --Type 'q' to quit and press Enter to see the result.\n";
+}
+
 void calculate()
 {
-    std::cout << "================================================================\n";
-    std::cout << "                  Welcome to our simple calculator              \n";
-    std::cout << "      Please enter expressions using floating-point numbers     \n";
-    std::cout << "      +,-,*,/ operators are supported, q to quit, ; to print    \n";
-    std::cout << "================================================================\n";
+    std::cout << "=====================================================================\n";
+    std::cout << "                     Welcome to our simple calculator                \n";
+    std::cout << "      Please enter expressions using floating-point numbers          \n";
+    std::cout << "      +,-,*,/ operators are supported, q to quit, enter to print     \n";
+    std::cout << "=====================================================================\n";
     while (std::cin) {
         try
         {
@@ -438,6 +468,10 @@ void calculate()
             Token t = ts.get();
             while (t.kind == print) t = ts.get();
             if (t.kind == quit) { break; }
+            if (t.kind == help) {
+                helphint();
+                continue;
+            }
             ts.putback(t);
 			cout << result << statement() << endl;            
         }
@@ -454,8 +488,8 @@ int main()
     try {
 
         // predefine names:
-        define_name("pi",3.1415926535,true);
-        define_name("e",2.7182818284,true);
+        st.define_name("pi",3.1415926535,true);
+        st.define_name("e",2.7182818284,true);
 
         calculate();
         keep_window_open();
