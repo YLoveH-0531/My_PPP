@@ -98,11 +98,13 @@ double Symbol_table::define_name(string var, double val, const char kind)
 // get token and put back token.
 class Token_Stream{
     public:
-        Token_Stream(): full(false), buffer(0) { }
+        Token_Stream(): is(std::cin), full(false), buffer(0) { }
+        explicit Token_Stream(std::istream& isstream) : is(isstream) {}
         void putback(Token t);
         Token get();
         void ignore(char c);
     private:
+        std::istream& is;
         bool full;
         Token buffer;
 };
@@ -117,19 +119,19 @@ Token Token_Stream::get()
     }
 
     char ch;
-    while (std::cin >> std::noskipws >> ch && isspace(ch)) {
+    while (is >> std::noskipws >> ch && isspace(ch)) {
         if (ch == '\n') {
             return Token(print);
         }
     } 
-    std::cin >>std::skipws;
+    is >> std::skipws;
     switch(ch)
     {   
         case quit:
         {
             std::string s;
-            std::cin.putback(ch);          
-            std::cin >> s;
+            is.putback(ch);          
+            is >> s;
             if (s != "quit") {
                 error("Bad token after 'q': ", s);
             }
@@ -138,8 +140,8 @@ Token Token_Stream::get()
         case help:
         {
             std::string s;
-            std::cin.putback(ch);          
-            std::cin >> s;
+            is.putback(ch);          
+            is >> s;
             if (s != "help") {
                 error("Bad token after 'h': ", s);
             }
@@ -165,16 +167,16 @@ Token Token_Stream::get()
         case '5': case '6': case '7': case '8': case '9':
         {
             double val;
-            std::cin.unget();
-            std::cin >> val;
+            is.unget();
+            is >> val;
             return Token(number, val);
         }
         default:
             if (isalpha(ch)) {
                 string s;
                 s += ch;
-                while (cin.get(ch) && (isalpha(ch) || isdigit(ch))) s+=ch;
-                cin.putback(ch);
+                while (is.get(ch) && (isalpha(ch) || isdigit(ch))) s+=ch;
+                is.putback(ch);
                 if (s == declkey) return Token{let}; // declaration keyword
                 if (s == "const") { return Token{cons}; } // constant keyword
                 if (s == "sqrt") { return Token{func, s}; } // sqrt operator
@@ -205,10 +207,10 @@ void Token_Stream::ignore(char c)
     full = false;
 
     char ch;
-    while (std::cin >> std::noskipws >> ch)
+    while (is >> std::noskipws >> ch)
     {
         if (ch == c) {
-            std::cin >> std::skipws;
+            is >> std::skipws;
             return; 
         }
     }
