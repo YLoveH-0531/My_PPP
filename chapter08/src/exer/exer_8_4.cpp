@@ -11,17 +11,18 @@
 void fibonacci(int x, int y, std::vector<int>& fac_vec, std::vector<int>::size_type size)
 {
     long long max_int = std::numeric_limits<int>::max();
-    fac_vec.push_back(x);
-    fac_vec.push_back(y);
-
-    for (std::vector<int>::size_type i = 0; i < size - 2; i++) {
-        fac_vec.push_back(fac_vec[i+1] + fac_vec[i]);
-        if (fac_vec[i+3] > max_int) {
+    long long lx = x;
+    long long ly = y;
+    for (std::vector<int>::size_type i = 0; i < size ; i++) {
+        if (lx > max_int) {
             break;
         }
+        fac_vec.push_back(static_cast<int>(lx));
+        long long z = lx + ly;
+        lx = ly;
+        ly = z;
     }
-
-    //print("fac_vec", fac_vec, std::cout);
+    print("fac_vec", fac_vec, std::cout);
     std::cout << "Approximation of int maximum number is " << fac_vec[fac_vec.size()-1] << "\n";
 }
 
