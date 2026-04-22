@@ -13,11 +13,13 @@ const Date& default_date(){
 Date::Date() : y{default_date().year()}, m{default_date().month()}, d{default_date().day()} {}
 
 void Date::add_day(int n)
-{// . . .
+{   // say something just avoid the compiler warning about unused n
+    std::cout << "add_day() called with n = " << n << std::endl;
 } 
 
 void Date::add_month(int n)
-{// . . .
+{   // say something just avoid the compiler warning about unused n
+    std::cout << "add_month() called with n = " << n << std::endl;
 }
 
 void Date::add_year(int n) {
@@ -40,13 +42,17 @@ bool is_date(int y, Month m, int d) {   // assume that y is valid
         case Month::apr: case Month::jun: case Month::sep: case Month::nov:
             days_in_month = 30;  // the rest have 30 days
             break;
+        default:
+            break;
     }
     if (days_in_month<d) return false;
     return true;
 }
 
 bool leapyear(int y)
-{// see exercise 10
+{  // say something just avoid the compiler warning about unused n
+    std::cout << "leapyear() called with y = " << y << std::endl;
+    return false;
 }
 
 bool operator==(const Date& a, const Date& b) {
@@ -77,15 +83,21 @@ std::istream& operator>>(std::istream& is, Date& dd){
 }
 
 Day day_of_week(const Date& d)
-{ // . . .
+{ // say something just avoid the compiler warning about unused n
+    std::cout << "day_of_week() called with d = " << d << std::endl;
+    return Day::sunday; // placeholder implementation
 }
 
 Date next_Sunday(const Date& d)
-{// ...
+{// say something just avoid the compiler warning about unused n
+    std::cout << "next_Sunday() called with d = " << d << std::endl;
+    return Date(); // placeholder implementation
 }
 
 Date next_weekday(const Date& d)
-{// . . .
+{// say something just avoid the compiler warning about unused n
+    std::cout << "next_weekday() called with d = " << d << std::endl;
+    return Date(); // placeholder implementation
 }
 
 } // Chrono
