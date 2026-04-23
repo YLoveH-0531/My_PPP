@@ -42,6 +42,7 @@ foreach(sub_dir ${SUB_DIRECTORIES})
         # 为静态库添加对应的 include 路径（PUBLIC 使链接它的目标也能继承此路径）
         target_include_directories(${lib_name} PUBLIC
             "${CMAKE_CURRENT_SOURCE_DIR}/include/${sub_dir}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/include/drill"
         )
 
     endif()
@@ -59,11 +60,18 @@ foreach(sub_dir ${SUB_DIRECTORIES})
         # PRIVATE 表示此路径只对本目标有效，不向外传递
         target_include_directories(${target_name} PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/include/${sub_dir}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/include/drill"   # 额外添加
         )
 
         # 如果本子目录存在静态库，则将其链接到当前可执行文件
         if(SUPPORT_SOURCES)
             target_link_libraries(${target_name} PRIVATE ${lib_name})
+        endif()
+
+        # 额外链接 drill 的库（exer 里的程序可能依赖 drill 的实现）
+        set(drill_lib_name "${CURRENT_DIR_NAME}_drill_lib")
+        if(TARGET ${drill_lib_name})
+            target_link_libraries(${target_name} PRIVATE ${drill_lib_name})
         endif()
 
         # 设置可执行文件的输出路径，按章节和子目录分类存放
