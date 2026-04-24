@@ -46,6 +46,9 @@ bool Book::isvalid_isbn(const std::string& isbn) const{
         } else {
             return false; 
         }
+        if (count == 3 ) {
+            break; // We only need to check the first three parts 
+        }
     }
 
     if (count == 3 && iss >> c && isalnum(c) && iss.peek() == EOF) {   

@@ -13,13 +13,26 @@ const Date& default_date(){
 Date::Date() : y{default_date().year()}, m{default_date().month()}, d{default_date().day()} {}
 
 void Date::add_day(int n)
-{   // say something just avoid the compiler warning about unused n
-    std::cout << "add_day() called with n = " << n << std::endl;
+{
+    static const int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    d += n;
+    while (true) {
+        int dim = (m == Month::feb && leapyear(y)) ? 29 : days_in_month[int(m)];
+        if (d <= dim) break;
+        d -= dim;
+        add_month(1);
+    }
 } 
 
 void Date::add_month(int n)
-{   // say something just avoid the compiler warning about unused n
-    std::cout << "add_month() called with n = " << n << std::endl;
+{
+    int total = int(m) - 1 + n;       // 0-based total months
+    y += total / 12;
+    m = Month(total % 12 + 1);
+    // clamp day if new month is shorter (e.g. Jan 31 + 1 month → Feb 28/29)
+    static const int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int dim = (m == Month::feb && leapyear(y)) ? 29 : days_in_month[int(m)];
+    if (d > dim) d = dim;
 }
 
 void Date::add_year(int n) {
@@ -50,9 +63,8 @@ bool is_date(int y, Month m, int d) {   // assume that y is valid
 }
 
 bool leapyear(int y)
-{  // say something just avoid the compiler warning about unused n
-    std::cout << "leapyear() called with y = " << y << std::endl;
-    return false;
+{   
+    return ((y%4==0 && y%100!=0) || y%400==0);
 }
 
 bool operator==(const Date& a, const Date& b) {
@@ -83,21 +95,36 @@ std::istream& operator>>(std::istream& is, Date& dd){
 }
 
 Day day_of_week(const Date& d)
-{ // say something just avoid the compiler warning about unused n
-    std::cout << "day_of_week() called with d = " << d << std::endl;
-    return Day::sunday; // placeholder implementation
+{
+    // Tomohiko Sakamoto's algorithm
+    static const int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+    int y = d.year();
+    int m = int(d.month());
+    int day = d.day();
+    if (m < 3) y--;
+    int dow = (y + y/4 - y/100 + y/400 + t[m-1] + day) % 7;
+    return Day(dow);
 }
 
-Date next_Sunday(const Date& d)
-{// say something just avoid the compiler warning about unused n
-    std::cout << "next_Sunday() called with d = " << d << std::endl;
-    return Date(); // placeholder implementation
+Date next_Sunday(const Date d)
+{
+    Date result = d;
+    result.add_day(1);
+    while (day_of_week(result) != Day::sunday)
+        result.add_day(1);
+    return result;
 }
 
 Date next_weekday(const Date& d)
-{// say something just avoid the compiler warning about unused n
-    std::cout << "next_weekday() called with d = " << d << std::endl;
-    return Date(); // placeholder implementation
+{
+    Date result = d;
+    result.add_day(1);
+    Day dow = day_of_week(result);
+    while (dow == Day::saturday || dow == Day::sunday) {
+        result.add_day(1);
+        dow = day_of_week(result);
+    }
+    return result;
 }
 
 } // Chrono
