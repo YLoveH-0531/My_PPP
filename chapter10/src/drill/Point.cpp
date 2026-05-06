@@ -6,7 +6,7 @@
  * @details  Point class to exercise input and output
  */
 
-#include "Pointer.h"
+#include "Point.h"
 #include "std_lib_facilities.h"
 
 vector<Point> original_points;
@@ -15,30 +15,35 @@ void read_points_with_cmd() {
     std::cout << "Enter points (x y):" << std::endl;
     Point p;
     while (true) {
-        char c = std::cin.peek();
+        while (std::isspace(std::cin.peek()) && std::cin.peek() != '\n') {
+            std::cin.ignore();
+        }
+
+        if (std::cin.peek() == '\n') {
+            std::cin.ignore();
+            break;
+        }
+
+        char c;
         double x, y;
+        std::cin >> c;
         if (c != '(') {
             error("Expected '(' at the beginning of a point.");
             break;
         }
-        std::cin.get(); // consume '('
         if (!(std::cin >> x >> y)) {
             error("Invalid input format. Please enter points as (x y).");
             break;
         }
 
-        c = std::cin.peek();
+        std::cin >> c;
         if (c != ')') {
             error("Expected ')' at the end of a point.");
             break;
         }
-        std::cin.get(); // consume ')'
         p.x = x;
         p.y = y;
         original_points.push_back(p);
-        if (std::cin.peek() == '\n') {
-            break; // stop reading if the user presses Enter
-        }
     }
 }
 
