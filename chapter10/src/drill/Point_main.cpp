@@ -6,7 +6,7 @@
  * @details  Point class to exercise input and output
  */
 
-#include "Pointer.h"
+#include "Point.h"
 
 int main() {
     read_points_with_cmd();
