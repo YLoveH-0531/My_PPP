@@ -80,6 +80,14 @@ foreach(sub_dir ${SUB_DIRECTORIES})
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${CURRENT_DIR_NAME}/${sub_dir}"
         )
 
+        # 确保 data 目录存在
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data")
+
+        # 将 data 目录的绝对路径作为宏传给程序
+        target_compile_definitions(${target_name} PRIVATE
+            DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/"
+        )
+        
         # 将当前目标名追加到汇总列表，方便最后统一打印
         list(APPEND ALL_TARGETS ${target_name})
 

@@ -7,27 +7,22 @@
  */
 
 #include "Point.h"
-#include "std_lib_facilities.h"
+#include <fstream>
 
 vector<Point> original_points;
+vector<Point> processed_points;
 
 void read_points_with_cmd() {
     std::cout << "Enter points (x y):" << std::endl;
-    Point p;
     while (true) {
-        while (std::isspace(std::cin.peek()) && std::cin.peek() != '\n') {
-            std::cin.ignore();
-        }
 
-        if (std::cin.peek() == '\n') {
-            std::cin.ignore();
-            break;
-        }
+        char ch;
+        while(std::cin.get(ch) && std::isspace(ch) && ch != '\n') ;
 
-        char c;
+        if (!std::cin || ch == '\n') { break; } // End of input
+
         double x, y;
-        std::cin >> c;
-        if (c != '(') {
+        if (ch != '(') {
             error("Expected '(' at the beginning of a point.");
             break;
         }
@@ -36,14 +31,17 @@ void read_points_with_cmd() {
             break;
         }
 
-        std::cin >> c;
-        if (c != ')') {
+        while(std::cin.get(ch) && std::isspace(ch) && ch != '\n') ;
+        if (!std::cin || ch == '\n') { 
+            error("Unexpected end of input.");
+            break; 
+        } // End of input
+
+        if ( ch != ')') {
             error("Expected ')' at the end of a point.");
             break;
         }
-        p.x = x;
-        p.y = y;
-        original_points.push_back(p);
+        original_points.push_back({x,y});
     }
 }
 
@@ -51,5 +49,48 @@ void write_points_with_cmd() {
     std::cout << "You entered the following points:" << std::endl;
     for (const auto& p : original_points) {
         std::cout << "(" << p.x << ", " << p.y << ")" << std::endl;
+    }
+}
+
+void read_points_with_file(vector<Point>& points, const std::string& filename) {
+    std::ifstream infile(filename);
+    if (!infile) {
+        error("Could not open file: " + filename);
+        return;
+    }
+    while (true){
+        char ch;
+        while(infile.get(ch) && std::isspace(ch));
+        if (!infile) { break; } // End of file
+        if (ch != '(') {
+            error("Expected '(' at the beginning of a point.");
+            break;
+        }
+        double x, y;
+        if (!(infile >> x >> y)) {
+            error("Invalid input format. Please enter points as (x y).");
+            break;
+        }
+        while(infile.get(ch) && std::isspace(ch));
+        if (!infile) {
+            error("Unexpected end of file.");
+            break; 
+        } // End of file
+        if (ch != ')') {
+            error("Expected ')' at the end of a point.");
+            break;  
+        }
+        points.push_back({x,y});
+    }
+}
+
+void write_points_with_file(const vector<Point>& points, const std::string& filename) {
+    std::ofstream outfile(filename, std::ios::app);
+    if (!outfile) {
+        error("Could not open file: " + filename);
+        return;
+    }
+    for (const auto& p : points) {
+        outfile << "(" << p.x << " " << p.y << ")" << '\n';
     }
 }
