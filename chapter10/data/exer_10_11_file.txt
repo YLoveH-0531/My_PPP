@@ -1,0 +1,4 @@
+bears: 17 elephants 9 end
+lions 3 tigers 12 total: 5
+score100 not-a-number hello 8
+the answer is 42 and also 7 more

@@ -1,0 +1,23 @@
+ant
+apple
+banana
+bear
+cat
+cherry
+dog
+dolphin
+eagle
+elephant
+fish
+fish
+fox
+goat
+grape
+hawk
+horizon
+igloo
+island
+jaguar
+jungle
+kite
+ lemon
