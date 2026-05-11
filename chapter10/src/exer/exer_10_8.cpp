@@ -17,19 +17,33 @@
 #include <string>
 #include <stdexcept>
 
-void concate(const std::string& file1, const std::string& file2)
+const std::string DATA = DATA_DIR;
+
+void concate(const std::string& file1, const std::string& file2, const std::string& out)
 {
-    std::ifstream ifs1(file1);
-    std::ifstream ifs2(file2);
+    std::cout << "Concate  start...\n";
+
+    std::ifstream ifs1(DATA + file1);
+    std::ifstream ifs2(DATA + file2);
+    std::ofstream ofs(DATA + out);
 
     if (!ifs1 || !ifs2) { throw std::runtime_error("can not open file"); }
+    if (!ofs) { throw std::runtime_error("can not create file"); }
 
+    ofs << ifs1.rdbuf();
+    ofs << ifs2.rdbuf();
+    if (!ofs) throw std::runtime_error("Write failed: " + out);
+    ofs.close();
+
+    std::ifstream ifs3(DATA + out);
+    std::cout << ifs3.rdbuf();
+    std::cout << "Concate  finish...\n";
 }
 
 
 int main()
 {   
-    std::string file1, file2;
-    concate(file1, file2);
+    std::string file1{"exer_10_1.txt"}, file2{"MyData.txt"}, file3{"exer_10_8.txt"};
+    concate(file1, file2, file3);
     return 0;
 }
