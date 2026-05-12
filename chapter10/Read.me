@@ -355,3 +355,63 @@ ofs.flush();   // buffer 写入磁盘，fd 保持打开，之后还能继续写
 ofs.close();   // buffer 写入磁盘 + 释放 fd，之后不能再写
 
 这里后续不再写 ofs，用 close() 更合适。
+
+11. std::filebuf 和std::streambuf
+std::filebuf 是 std::streambuf 的子类：
+
+std::streambuf          ← 抽象基类，定义缓冲区接口
+    ↑
+std::filebuf            ← 具体实现，负责文件 I/O
+
+完整名称是：
+std::basic_streambuf<char>   // 基类
+std::basic_filebuf<char>     // 派生类，typedef 为 std::filebuf
+
+---
+各自职责
+
+streambuf — 只定义接口，不知道数据从哪来
+
+// 定义了这些虚函数，由子类实现
+virtual int_type underflow();   // 缓冲区空了，去填充
+virtual int_type overflow();    // 缓冲区满了，去刷新
+virtual int      sync();        // 同步（flush）
+
+三指针（eback/gptr/egptr）也定义在这里，是所有子类共用的机制。
+
+filebuf — 重写虚函数，把数据来源绑定到文件
+
+// underflow() 的实现：
+int_type underflow() override {
+    // 调用 read(fd, buffer, n) 从文件读数据
+    // 填充三指针
+}
+
+// overflow() 的实现：
+int_type overflow() override {
+    // 调用 write(fd, buffer, n) 把数据写到文件
+}
+
+---
+为什么这样设计
+
+rdbuf() 返回的是 streambuf*（基类指针），所以可以统一处理：
+
+// 这三行代码完全一样的形式，背后却是不同的 streambuf 子类
+std::cout << ifs.rdbuf();        // filebuf（文件）
+std::cout << cin.rdbuf();        // filebuf（标准输入）
+std::cout << sstream.rdbuf();    // stringbuf（内存字符串）
+
+其他子类：
+
+┌────────────────┬──────────────────────┐
+│      子类      │       数据来源       │
+├────────────────┼──────────────────────┤
+│ std::filebuf   │ 磁盘文件             │
+├────────────────┼──────────────────────┤
+│ std::stringbuf │ 内存 string          │
+├────────────────┼──────────────────────┤
+│ 自定义子类     │ 网络、串口、任意设备 │
+└────────────────┴──────────────────────┘
+
+streambuf 是策略抽象，filebuf 是文件策略的具体实现。
