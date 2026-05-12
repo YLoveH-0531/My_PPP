@@ -3,7 +3,7 @@
  * @author   KaKaRot
  * @date     11/5/2026
  * @brief    practice on contents.
- * @details  rewrite some examples from chapter.
+ * @details  rewrite some examples from chapter 10.6.
  */
 
 #include <iostream>
@@ -22,8 +22,13 @@ const std::string DATA = DATA_DIR;
 
 void fill_to_vector(std::vector<int>& v, std::ifstream& ifs, char teminator)
 {
+    std::cout << "fill_to_vector start..." << '\n';
     for(int i; ifs >> i;){
         v.push_back(i);
+    }
+
+    for(const auto& i : v){
+        std::cout << i << '\n';
     }
 
     if (ifs.eof()) { return; }
@@ -35,6 +40,8 @@ void fill_to_vector(std::vector<int>& v, std::ifstream& ifs, char teminator)
         ifs.unget();
         ifs.setstate(std::ios::failbit);
     }
+
+    std::cout << "fill_to_vector end..." << '\n';
 }
 
 int main()
