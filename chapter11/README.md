@@ -333,8 +333,6 @@ C++ 流通过内部标志位（flags）控制输出行为。`setf` 是“拨动�
 ### 2. 浮点数格式化：模式与精度的联动
 `setprecision(n)` 的含义取决于当前的 `floatfield` 状态。
 
-
-
 | 浮点模式 | 开启方式 | `setprecision(n)` 含义 | 自动去尾零 |
 | :--- | :--- | :--- | :--- |
 | **Default** | `defaultfloat` | **总有效数字**为 $n$ 位 | 是 |
@@ -348,8 +346,6 @@ C++ 流通过内部标志位（flags）控制输出行为。`setf` 是“拨动�
 
 ### 3. 流操纵符 (Manipulators) 的运行本质
 `std::cout << std::hex;` 并非简单的变量输入，而是一个**函数回调**过程。
-
-
 
 1. **函数定义**：`std::hex` 是一个接受 `ostream&` 并返回 `ostream&` 的全局函数。
 2. **重载匹配**：`ostream` 重载了 `operator<<` 以接受这种函数指针。
