@@ -4,6 +4,9 @@ get_filename_component(CURRENT_DIR_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 # 定义需要处理的子目录列表
 set(SUB_DIRECTORIES "drill" "exer")
 
+# 添加全局宏定义，子项目下的所有 .cpp 都能自动拿到 DATA_DIR
+add_compile_definitions(DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/")
+
 # 第一层循环：依次处理每个子目录
 foreach(sub_dir ${SUB_DIRECTORIES})
 
@@ -82,11 +85,6 @@ foreach(sub_dir ${SUB_DIRECTORIES})
 
         # 确保 data 目录存在
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data")
-
-        # 将 data 目录的绝对路径作为宏传给程序
-        target_compile_definitions(${target_name} PRIVATE
-            DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/"
-        )
         
         # 将当前目标名追加到汇总列表，方便最后统一打印
         list(APPEND ALL_TARGETS ${target_name})

@@ -22,3 +22,8 @@ compile_commands.json
 .vscode/
 !.vscode/settings.json
 !.vscode/launch.json
+
+#doxygen
+html/
+latex/
+/Doxyfile
