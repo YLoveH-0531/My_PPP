@@ -1,155 +1,47 @@
-All drill exercises are wrote to Point.cpp.
+# C++ I/O 流与底层缓冲机制深度剖析
 
+## 一、标准输入的全链路流程 (OS → 运行时 → C++ 层)
 
-1. 标准输入的流程
+### 1. 终端层 (Terminal)
 
-a. 终端层
-只负责获取用户数据，把用户输入的 ASCII 临时存放，并下发到行规范层。
+只负责获取用户数据，将用户输入的 ASCII 字符临时存放，并下发到内核的行规范层。
 
-b. 行规范层（tty line discipline）
-终端和程序之间的内核中间件，默认运行在规范模式（canonical mode），维护一个内核缓冲区，遵循两条硬性规则：
+### 2. 行规范层 (tty line discipline)
 
-- 拦截控制字符：普通字符（a、1）放进缓冲区；特殊控制字符（Ctrl+C 中断、Ctrl+D
-EOF）直接拦截，不进缓冲区，执行相应内核动作
-- 唤醒时机：缓冲区没遇到"提交信号"时，调用了 read() 的程序一直阻塞（挂起睡眠）
+终端和程序之间的内核中间件，默认运行在**规范模式（canonical mode）**。它维护一个内核缓冲区，并遵循两条硬性规则：
 
-c. 代码层
-std::cin >> x 向系统发起 read() 系统调用，之后：
+- **拦截控制字符**：普通字符（如 `a`, `1`）放入缓冲区；特殊控制字符（如 `Ctrl+C` 中断、`Ctrl+D` EOF）被拦截，不进入缓冲区，直接触发相应内核动作。
+- **唤醒时机**：只要缓冲区没遇到"提交信号"（如回车），调用了 `read()` 的用户态程序就会一直阻塞（挂起睡眠）。
 
-- 遇到 \n（Enter）→ 放进缓冲区，通知内核唤醒阻塞的 read()
-- 遇到 Ctrl+D → 拦截，强制唤醒 read()，把缓冲区原封不动交出去
-- 内核把数据交给 cin 的 basic_filebuf 缓冲区
+### 3. C++ 库层
 
-Note：cin >> x 的缓冲决策
-cin >> x
-→ 先检查 basic_filebuf 内部缓冲区有没有数据
-    ├─ 有数据 → 直接从缓冲区读，不发起 read() 系统调用
-    └─ 没数据 → 调用 read()，一次性尽量多读（最多 8KB），填满缓冲区，再取数据
+当执行 `std::cin >> x` 时，程序向系统发起 `read()` 系统调用：
 
----
-2. Ctrl+D 发生了什么
+- **遇到 `\n`（Enter）**：换行符被放入缓冲区，通知内核唤醒阻塞的 `read()`。
+- **遇到 `Ctrl+D`（EOF）**：拦截，强制唤醒 `read()`，把当前缓冲区现有数据原封不动交出去。
+- **缓冲决策**：`cin` 会先检查内部的 `basic_filebuf` 缓冲区是否有数据：
+  - **有数据**：直接从内存缓冲区读取，不发起系统调用。
+  - **无数据**：触发 `underflow()`，调用底层 `read()` 一次性尽量多读（通常 8KB），填满缓冲区后再提取所需数据。
 
-a. 让行规范层把当前缓冲区（哪怕是空的）立刻 flush 给等待 read() 的进程
+### 4. 完整调用栈（sync_with_stdio=true，默认）
 
-b. 缓冲区为空时，read() 返回 0，应用层把这个 0 解释为 EOF
-
-c. 内核侧：fd 仍然是 open 状态，没有任何变化。再次调用 read(STDIN_FILENO, buf,
-n)，内核会正常阻塞等待下一次输入，用户继续输入仍能正常返回数据
-
-d. 完整调用栈
-应用代码 (cin >> x)
+```text
+应用代码 (cin >> x  /  cout << x)
     ↓
-C++ 标准库: basic_ios / basic_istream
-    ↓
-C++ 标准库: basic_filebuf::underflow()   ← C++ 对象层
-    ↓
-C 标准库:   fread() / read()
-    ↓
-系统调用:   read(fd, buf, n)              ← 内核边界
-    ↓
-内核: tty line discipline → 终端输入缓冲区
-
-e. 问题卡在 C++ 层
-内核:          fd 还活着，愿意继续 block
-basic_filebuf: 内部 EOF 标记已设 → 不发起新的 read() → 直接返回 eof
-ios 层:        eofbit 被设置
-cin.clear():   只清了 ios 层的 bit，basic_filebuf 的内部状态没变
-
----
-3. 输入数据超过最大范围时发生了什么
-
-以输入 10000000000000 超过 unsigned long long 为例：
-
-a. 终端保存数据，等待回车给内核
-
-b. 内核等待 read() 调用，把数据交给 cin 的缓冲区
-
-c. cin 得到数据后尝试转换，发现溢出：
-- C++11 及之后：把数字从输入缓冲区消耗掉
-- 同时设置 failbit
-- 给变量赋边界值（最大值或最小值）
-
----
-4. \n 优于 endl / flush
-
-endl 和 flush 会强制把缓冲区内容写到终端，产生额外的系统调用开销。\n 只是写入缓冲区，等 buffer 满或程序结束时统一
-flush，性能更好。
-
-cout << "hello\n";      // ✓ 推荐
-cout << "hello" << endl; // ✗ 每次都 flush，慢
-
----
-5. std::cin 与 std::getline
-
-a. 核心区别，不要混用
-
-┌───────────┬───────────────────────┬───────────────────────┐
-│           │       cin >> x        │   getline(cin, str)   │
-├───────────┼───────────────────────┼───────────────────────┤
-│ 停止条件  │ 遇到空白字符（含 \n） │ 遇到 \n 或 EOF        │
-├───────────┼───────────────────────┼───────────────────────┤
-│ \n 的处理 │ 退回缓冲区，不消耗    │ 消耗掉，不进入 string │
-├───────────┼───────────────────────┼───────────────────────┤
-│ 前导空白  │ 跳过                  │ 保留                  │
-├───────────┼───────────────────────┼───────────────────────┤
-│ EOF 处理  │ 置 eofbit             │ 置 eofbit             │
-└───────────┴───────────────────────┴───────────────────────┘
-
-b. 数据流向
-getline 是从 cin 的缓冲区读走数据放进 string，cin 是数据来源，string 是终点。
-
-c. 伪代码对比
-
-// getline 伪代码
-istream& getline(istream& is, string& str, char delim = '\n') {
-    str.clear();
-    auto* sb = is.rdbuf();
-    while (true) {
-        int c = sb->sbumpc();          // 从 basic_filebuf 取一个字符
-        if (c == EOF) { state |= eofbit; break; }
-        if (c == delim) break;         // 找到 \n，消耗掉，结束
-        str += static_cast<char>(c);
-    }
-    is.setstate(state);
-    return is;
-}
-
-// cin >> x 伪代码
-istream& operator>>(istream& is, int& x) {
-    // 1. 跳过前导空白
-    while (isspace(sb->sgetc())) sb->sbumpc();
-
-    // 2. 读到空白或 EOF 为止
-    string buf;
-    while (true) {
-        int c = sb->sbumpc();
-        if (c == EOF) { state |= eofbit; break; }
-        if (isspace(c)) { sb->sputbackc(c); break; }  // 空白退回缓冲区
-        buf += c;
-    }
-
-    // 3. 转换类型
-    x = stoi(buf);
-    is.setstate(state);
-    return is;
-}
-
----
-6. 完整调用栈（sync_with_stdio=true，默认）
-
-应用代码: cout << x  /  cin >> x
-    ↓
-C++ 标准库: basic_ostream / basic_istream
+C++ 标准库: basic_istream / basic_ostream
     ↓
 C++ 标准库: basic_filebuf（无独立缓冲，转发给 C runtime）
     ↓
-C 标准库: FILE* stdout / FILE* stdin 缓冲区（用户空间）
+C 标准库: FILE* stdin / FILE* stdout 缓冲区（用户空间）
     ↓
-系统调用: write(fd=1) / read(fd=0)
+系统调用: read(fd=0) / write(fd=1)
     ↓
 内核: tty driver / tty line discipline
+```
 
-FILE* 结构体核心字段
+`FILE*` 结构体核心字段：
+
+```cpp
 struct FILE {
     int    _fileno;       // 文件描述符（stdin=0, stdout=1, stderr=2）
     char*  _IO_buf_base;  // 缓冲区起始
@@ -157,261 +49,279 @@ struct FILE {
     char*  _IO_write_ptr; // 当前写入位置
     int    _flags;        // 缓冲模式标志
 };
+```
 
 ---
-7. 缓冲模式决策树
 
-程序启动时 C runtime 调用 isatty(fd)，结果在整个运行期间不可变：
+## 二、特殊场景下的底层响应
 
-isatty == true  → 连接终端 → 行缓冲 _IOLBF → '\n' 触发 flush
-isatty == false → 文件/管道 → 全缓冲 _IOFBF → '\n' 不触发 flush
+### 1. `Ctrl+D` 发生了什么？
+
+- **触发 Flush**：让行规范层把当前内核缓冲区（哪怕是空的）立刻 flush 给等待 `read()` 的进程。
+- **产生 EOF 语义**：若缓冲区为空时按下 `Ctrl+D`，`read()` 返回 `0`，应用层将这个 `0` 解释为 EOF。
+- **内核侧状态**：fd 仍处于 open 状态，再次调用 `read(STDIN_FILENO, buf, n)` 内核依然会正常阻塞等待。
+- **C++ 层的状态固化**：虽然内核 fd 还活着，但 `basic_filebuf` 一旦读到返回 0，就会设置内部 EOF 标记，不再发起新的 `read()`，直接向上返回 eof；流的 `ios` 层设置 `eofbit`。
+
+> **注意**：`cin.clear()` 只清空 `ios` 层的状态位（`eofbit`、`failbit`），`basic_filebuf` 的内部终止状态不受影响。
+
+### 2. 输入数据超出变量类型最大范围
+
+以输入 `10000000000000`（超出 `unsigned long long`）为例：
+
+1. 终端保存数据，回车后提交给内核，内核通过 `read()` 交给 `cin` 缓冲区。
+2. `cin` 转换时发现溢出（C++11 及之后）：
+   - 依然把这些字符从缓冲区中**消耗掉**（提取游标后移）。
+   - 设置 `failbit`。
+   - 给变量赋予该类型的**边界值**（`numeric_limits<T>::max()` 或最小值）。
 
 ---
-8. sync_with_stdio(false) 的影响
 
-std::ios::sync_with_stdio(false);
-std::cin.tie(nullptr);
+## 三、性能与接口抉择
 
-┌─────────────────────┬───────────────────┬──────────────────┐
-│                     │ sync=true（默认） │    sync=false    │
-├─────────────────────┼───────────────────┼──────────────────┤
-│ 缓冲区归属          │ C runtime FILE*   │ C++ filebuf 自己 │
-├─────────────────────┼───────────────────┼──────────────────┤
-│ \n 刷新 cout        │ 是（终端）        │ 否               │
-├─────────────────────┼───────────────────┼──────────────────┤
-│ cin 读前 flush cout │ 是                │ 否（tie=null）   │
-├─────────────────────┼───────────────────┼──────────────────┤
-│ 可混用 printf/cout  │ 可以              │ 不可以           │
-├─────────────────────┼───────────────────┼──────────────────┤
-│ 性能                │ 较慢              │ 快               │
-└─────────────────────┴───────────────────┴──────────────────┘
+### 1. `\n` 优于 `endl` / `flush`
 
-sync=false 后两个缓冲竞争同一 fd：
+`endl` 和 `flush` 会强制将缓冲区内容同步写入终端，产生系统调用上下文切换开销。`\n` 仅向内存缓冲区写入一个换行字符，性能远高于频繁手动 flush。
+
+```cpp
+cout << "hello\n";       // 推荐
+cout << "hello" << endl; // 每次强制 flush，大量输出时极慢
+```
+
+### 2. `cin >> x` 与 `getline` 的核心差异
+
+**核心原则：尽量不要混用。混用时必须在 `cin >> x` 后手动清理遗留的 `\n`。**
+
+| 特性 | `cin >> x` | `getline(cin, str)` |
+|------|-----------|---------------------|
+| 停止条件 | 遇到空白字符（空格、Tab、`\n`） | 遇到定界符（默认 `\n`）或 EOF |
+| 定界符 `\n` 处理 | **不消耗**，遗留在流缓冲区 | **消耗掉**，不放入 `str` |
+| 前导空白 | 自动跳过 | 严格保留 |
+| 数据流向 | `cin` 缓冲区 → 类型转换 → 赋给 `x` | `cin` 缓冲区 → 原始字节 → 追加到 `string` |
+
+---
+
+## 四、缓冲同步策略
+
+### 1. 缓冲模式决策树（C Runtime 层）
+
+程序启动时 C runtime 调用 `isatty(fd)` 决定缓冲策略，结果在整个运行期间不可变：
+
+```text
+isatty == true  → 连接终端  → 行缓冲 (_IOLBF) → '\n' 触发 flush
+isatty == false → 文件/管道 → 全缓冲 (_IOFBF) → '\n' 不触发 flush，写满块才 flush
+```
+
+### 2. `sync_with_stdio(false)` 解绑机制
+
+```cpp
+std::ios::sync_with_stdio(false); // 解绑 C++ 与 C 标准流
+std::cin.tie(nullptr);            // 解绑 cin 与 cout（读前不再强制 flush cout）
+```
+
+| 特性 | 默认状态（sync=true） | 解绑后（sync=false + tie=null） |
+|------|---------------------|--------------------------------|
+| 缓冲区归属 | C runtime 的 `FILE*` 缓冲区 | C++ `filebuf` 自己的独立缓冲区 |
+| `cin` 读前是否强制 flush `cout` | 是（`cin.tie(&cout)`） | 否 |
+| 与 `printf/scanf` 混用 | 可以，顺序一致 | **严禁**，输出顺序不可预期 |
+| I/O 性能 | 较慢 | 极快 |
+
+解绑后两个缓冲竞争同一 fd，输出顺序不可预期：
+
+```text
 printf → FILE* stdout 缓冲 ──→ write(fd=1) → 终端（竞争）
 cout   → C++ filebuf 缓冲  ──→ write(fd=1) → 终端（竞争）
-输出顺序不可预期
+```
 
 ---
-9. basic_streambuf 三指针机制
 
-get 区三指针
-内存缓冲区（8KB）
+## 五、底层数据结构：`basic_streambuf` 三指针机制
+
+C++ 流的底层运作依赖内存地址游标移动，而非数据拷贝。
+
+### 1. get 区三指针模型
+
+```text
+内存缓冲区（约 8KB 连续内存）
 ├─ eback()  ← get 区起点（回退边界）
 │
-│  [已读过的数据] [未读数据]
-│                 ↑
-├─ gptr()   ← 当前游标（"读到这里了"）
+│  [已读过的数据] [尚未读取的数据]
+│               ↑
+├─ gptr()   ← 当前读取游标（"下一个被读的字符"）
 │
-└─ egptr()  ← 有效数据末尾
+└─ egptr()  ← 有效数据末尾（警戒线）
+```
 
-- cin >> x / sbumpc() → gptr++（游标右移，数据不动）
-- unget() → gptr--（游标左移，前提：gptr > eback()）
-- putback(ch) → gptr--，并把 ch 写进 *gptr
-- seekg(pos) → 直接设 gptr = eback() + pos
+### 2. 行为表现
 
-缓冲区何时真正被覆写
+| 操作 | 底层动作 |
+|------|---------|
+| 读取（`cin >> x` / `sbumpc()`） | `gptr++`，游标右移，数据不动 |
+| 回退（`unget()`） | `gptr--`，前提：`gptr > eback()` |
+| 回写（`putback(ch)`） | `gptr--`，并将 `ch` 覆写到 `*gptr` |
+| 定位（`seekg(pos)`） | `gptr = eback() + offset`，直接设游标 |
 
-只有一个时机：gptr == egptr 时触发 underflow()
+**缓冲区何时真正被覆写**：唯一时机是 `gptr == egptr` 触发 `underflow()`：
+
+```text
 underflow() 被调用
     ↓
-read(fd, buffer_start, 8192)   ← 从头覆写整块缓冲区
+read(fd, buffer_start, 8192)    ← 从头覆写整块缓冲区
     ↓
 eback = gptr = buffer_start
 egptr = buffer_start + bytes_read
+```
 
-putback 保留区（防止覆写后无法退回）
-旧缓冲区: [...X]           ← X 是最后读到的字节
+**putback 保留区**：为保证覆写后依然能至少 `unget()` 一次，`underflow()` 会在新缓冲区开头保留 1~4 个上一轮的旧字符：
+
+```text
+旧缓冲区: [...X]
 新缓冲区: [X | 新数据...]
-            ↑     ↑
-        eback  gptr       ← 刚好能 unget() 一次
+           ↑   ↑
+        eback  gptr  ← 刚好能 unget() 一次
+```
 
-┌─────────────────────────────────┬───────────────────────────────────────────────┐
-│              问题               │                     答案                      │
-├─────────────────────────────────┼───────────────────────────────────────────────┤
-│ 缓冲区用什么机制                │ 三根指针（eback/gptr/egptr），游标移动        │
-├─────────────────────────────────┼───────────────────────────────────────────────┤
-│ seekg/unget/putback 为何能 work │ 只移游标，不动数据                            │
-├─────────────────────────────────┼───────────────────────────────────────────────┤
-│ 缓冲区何时清空（覆写）          │ gptr == egptr 触发 underflow() → read() 覆写  │
-├─────────────────────────────────┼───────────────────────────────────────────────┤
-│ 覆写后还能 unget 吗             │ 最多退 1 个字符（putback 保留区），再退就 EOF │
-├─────────────────────────────────┼───────────────────────────────────────────────┤
-│ cin.clear() 清了什么            │ 只清 ios 层的 eofbit/failbit，不影响缓冲区    │
-└─────────────────────────────────┴───────────────────────────────────────────────┘
+### 3. 常见问题速查
+
+| 问题 | 答案 |
+|------|------|
+| 缓冲区用什么机制 | 三根指针（eback/gptr/egptr），游标移动 |
+| seekg/unget/putback 为何能 work | 只移游标，不动数据 |
+| 缓冲区何时清空（覆写） | `gptr == egptr` 触发 `underflow()` → `read()` 覆写 |
+| 覆写后还能 unget 吗 | 最多退 1~4 个字符（putback 保留区），超出则失败 |
+| `cin.clear()` 清了什么 | 只清 ios 层的 eofbit/failbit，不影响缓冲区 |
 
 ---
-10. rdbuf() —— 流与底层缓冲区的桥梁
 
-a. 定义
+## 六、架构核心：`rdbuf()` 与多态流
 
-rdbuf() 是 std::basic_ios 的成员函数，返回流对象内部关联的 std::streambuf*。每个流对象（ifstream/ofstream/cout
-等）内部持有一个 streambuf，真正的读写都发生在这里，流只是上层封装。
+`rdbuf()` 是流对象中用于获取和替换底层 `streambuf` 指针的利器。
 
-std::ifstream ifs
-┌─────────────────────────────┐
-│  格式化层（>>、getline 等）  │
-├─────────────────────────────┤
-│  std::filebuf（streambuf）  │  ← rdbuf() 返回的就是这层
-│  ┌───────────────────────┐  │
-│  │  内部 buffer ~8KB     │  │  ← 真正在内存中的数据
-│  └───────────────────────┘  │
-└─────────────────────────────┘
-            ↕ 系统调用
-        磁盘文件
+```cpp
+std::streambuf* rdbuf() const;               // getter：返回当前关联的 streambuf 指针
+std::streambuf* rdbuf(std::streambuf* sb);   // setter：替换 streambuf，返回旧指针
+```
 
-b. 两个重载
+### 1. `streambuf` 与 `filebuf` 的面向对象关系
 
-// 重载 1：getter —— 返回当前关联的 streambuf 指针
-std::streambuf* rdbuf() const;
+遵循**策略模式 (Strategy Pattern)**：
 
-// 重载 2：setter —— 替换 streambuf，返回替换前的旧指针
-std::streambuf* rdbuf(std::streambuf* sb);
+```text
+std::basic_streambuf<char>         ← 基类：定义三指针机制和虚接口
+    ↑
+    ├── std::basic_filebuf<char>   ← 文件策略：调用 read()/write() 系统调用
+    └── std::basic_stringbuf<char> ← 内存策略：从 std::string 读写
+```
 
-// 重载 2 经典用法：重定向 cout 到文件
-std::ofstream ofs("log.txt");
-std::streambuf* old = std::cout.rdbuf(ofs.rdbuf());  // 替换
-std::cout << "写到文件里了";
-std::cout.rdbuf(old);                                 // 还原
+基类定义虚函数接口，子类重写实现具体数据来源：
 
-c. 内存角度：多个流各有独立缓冲区
+```cpp
+// filebuf 重写示例
+int_type underflow() override {
+    // 调用 read(fd, buffer, n) 从文件读数据，填充三指针
+}
+int_type overflow() override {
+    // 调用 write(fd, buffer, n) 将数据写到文件
+}
+```
 
-每个 ifstream 构造时内部 new 一个独立的 filebuf，各自持有独立的文件描述符和 buffer：
+因为 `rdbuf()` 返回 `streambuf*` 基类指针，以下三行代码形式完全相同，背后却是不同的子类：
 
+```cpp
+std::cout << ifs.rdbuf();     // filebuf（文件）
+std::cout << cin.rdbuf();     // filebuf（标准输入）
+std::cout << sstream.rdbuf(); // stringbuf（内存字符串）
+```
+
+### 2. 每个流对象各有独立缓冲区
+
+每个 `ifstream` 构造时内部 `new` 一个独立的 `filebuf`，各自持有独立的文件描述符和 buffer：
+
+```text
 ifs1: filebuf { fd=3, buffer[8192] }   ← 独立缓冲区 1
 ifs2: filebuf { fd=4, buffer[8192] }   ← 独立缓冲区 2
 ofs:  filebuf { fd=5, buffer[8192] }   ← 独立缓冲区 3
+```
 
-拼接两个文件时内存始终只有三块固定 buffer，约 24KB，与文件大小无关：
-ofs << ifs1.rdbuf();   // ifs1 buffer → ofs buffer，ifs2 静止
-ofs << ifs2.rdbuf();   // ifs2 buffer → ofs buffer，ifs1 已读完
+拼接两个文件时，内存始终只有三块固定 buffer（约 24KB），与文件大小无关：
 
-d. operator<<(streambuf*) 原理
+```cpp
+ofs << ifs1.rdbuf();  // ifs1 buffer → ofs buffer，ifs2 静止
+ofs << ifs2.rdbuf();  // ifs2 buffer → ofs buffer，ifs1 已读完
+```
 
-这是 std::basic_ostream 里的一个成员函数重载，绕过格式化层直接操作底层 buffer：
+### 3. 流间高效转发：`operator<<(streambuf*)`
 
-// ofs << ifs.rdbuf() 等价于：
-ofs.operator<<(ifs.rdbuf());
+这是 `basic_ostream` 的一个重载，绕过格式化层直接操作底层 buffer：
 
-// 内部实现大致为：
+```cpp
 basic_ostream& operator<<(streambuf* src) {
-    char buf[8192];           // 栈上临时中转数组
-    std::streamsize n;
+    char buf[8192];  // 栈上临时搬运数组
+    streamsize n;
     while ((n = src->sgetn(buf, sizeof(buf))) > 0)
         this->rdbuf()->sputn(buf, n);
     return *this;
 }
+```
 
-数据流向：
+数据流向（内存占用恒为 3 块 buffer，与文件大小无关）：
+
+```text
 磁盘文件 A
     ↓  read()（8KB）
 src filebuf（ifs 内部 buffer）
-    ↓  sgetn：取出数据放入
-char buf[8192]（栈上临时数组，两个 streambuf 的搬运工）
+    ↓  sgetn：取出数据
+char buf[8192]（栈上临时数组，搬运工）
     ↓  sputn：推入
 dst filebuf（ofs 内部 buffer）
     ↓  buffer 满时 write()
 磁盘文件 B
+```
 
-e. sgetn / sputn
+**`operator<<` 三种形式对比：**
 
-// 从 streambuf 读最多 n 个字符，返回实际读到的字节数
-std::streamsize sgetn(char* s, std::streamsize n);
+| 调用形式 | 类型 | 特点 |
+|---------|------|------|
+| `ofs << "hello"` | `operator<<(const char*)` | 格式化，写字符串 |
+| `ofs << 42` | `operator<<(int)` | 格式化，类型转换 |
+| `ofs << ifs.rdbuf()` | `operator<<(streambuf*)` | 原始拷贝，保留 `\n`/`\r`，内存恒定，效率最高 |
 
-// 把 n 个字符写入 streambuf，返回实际写入的字节数
-std::streamsize sputn(const char* s, std::streamsize n);
+### 4. 常用代码片段
 
-while ((n = src->sgetn(...)) > 0) 是典型惯用法：赋值 + 判断合并，n == 0 时文件读完退出。
+```cpp
+// 文件拷贝（最快的 C++ 写法）
+std::ifstream ifs("src.txt");
+std::ofstream ofs("dst.txt");
+ofs << ifs.rdbuf();
 
-f. operator<< 三种形式对比
-
-┌────────────────────┬─────────────────────────┬──────────────────────────────────────────┐
-│      调用形式      │          类型           │                   特点                   │
-├────────────────────┼─────────────────────────┼──────────────────────────────────────────┤
-│ ofs << "hello"     │ operator<<(const char*) │ 格式化，写字符串                         │
-├────────────────────┼─────────────────────────┼──────────────────────────────────────────┤
-│ ofs << 42          │ operator<<(int)         │ 格式化，类型转换                         │
-├────────────────────┼─────────────────────────┼──────────────────────────────────────────┤
-│ ofs << ifs.rdbuf() │ operator<<(streambuf*)  │ 原始拷贝，保留 \n/\r，内存恒定，效率最高 │
-└────────────────────┴─────────────────────────┴──────────────────────────────────────────┘
-
-g. 常见用法
-
-// ① 文件拷贝
-dst << src.rdbuf();
-
-// ② 文件内容读进 string（注意大文件仍占满内存）
+// 文件内容读进 string（注意大文件仍占满内存）
 std::ostringstream oss;
 oss << ifs.rdbuf();
 std::string content = oss.str();
 
-// ③ 打印文件内容到终端（调试用）
+// 打印文件内容到终端（调试用）
 std::cout << ifs.rdbuf();
+```
 
-h. flush 与 close 的区别
+### 5. `flush` 与 `close` 的区别
 
-写完文件后立刻读，必须先让 ofs 的 buffer 落盘，否则 ifs3 读到的是空的或不完整的内容：
+写完文件后立刻读，必须先让输出流的 buffer 落盘，否则读到的是空的或不完整的内容：
 
-ofs.flush();   // buffer 写入磁盘，fd 保持打开，之后还能继续写
-ofs.close();   // buffer 写入磁盘 + 释放 fd，之后不能再写
+```cpp
+ofs.flush(); // buffer 写入磁盘，fd 保持打开，之后还能继续写
+ofs.close(); // buffer 写入磁盘 + 释放 fd，之后不能再写
+```
 
-这里后续不再写 ofs，用 close() 更合适。
+### 6. I/O 重定向实战
 
-11. std::filebuf 和std::streambuf
-std::filebuf 是 std::streambuf 的子类：
+利用 `rdbuf()` 可轻易拦截标准输出：
 
-std::streambuf          ← 抽象基类，定义缓冲区接口
-    ↑
-std::filebuf            ← 具体实现，负责文件 I/O
+```cpp
+std::ofstream ofs("log.txt");
+// 替换 cout 的底层 buffer，保存旧 buffer
+std::streambuf* old_buf = std::cout.rdbuf(ofs.rdbuf());
 
-完整名称是：
-std::basic_streambuf<char>   // 基类
-std::basic_filebuf<char>     // 派生类，typedef 为 std::filebuf
+std::cout << "这行内容不会出现在屏幕上，而是直接写进了 log.txt\n";
 
----
-各自职责
-
-streambuf — 只定义接口，不知道数据从哪来
-
-// 定义了这些虚函数，由子类实现
-virtual int_type underflow();   // 缓冲区空了，去填充
-virtual int_type overflow();    // 缓冲区满了，去刷新
-virtual int      sync();        // 同步（flush）
-
-三指针（eback/gptr/egptr）也定义在这里，是所有子类共用的机制。
-
-filebuf — 重写虚函数，把数据来源绑定到文件
-
-// underflow() 的实现：
-int_type underflow() override {
-    // 调用 read(fd, buffer, n) 从文件读数据
-    // 填充三指针
-}
-
-// overflow() 的实现：
-int_type overflow() override {
-    // 调用 write(fd, buffer, n) 把数据写到文件
-}
-
----
-为什么这样设计
-
-rdbuf() 返回的是 streambuf*（基类指针），所以可以统一处理：
-
-// 这三行代码完全一样的形式，背后却是不同的 streambuf 子类
-std::cout << ifs.rdbuf();        // filebuf（文件）
-std::cout << cin.rdbuf();        // filebuf（标准输入）
-std::cout << sstream.rdbuf();    // stringbuf（内存字符串）
-
-其他子类：
-
-┌────────────────┬──────────────────────┐
-│      子类      │       数据来源       │
-├────────────────┼──────────────────────┤
-│ std::filebuf   │ 磁盘文件             │
-├────────────────┼──────────────────────┤
-│ std::stringbuf │ 内存 string          │
-├────────────────┼──────────────────────┤
-│ 自定义子类     │ 网络、串口、任意设备 │
-└────────────────┴──────────────────────┘
-
-streambuf 是策略抽象，filebuf 是文件策略的具体实现。
+// 务必在程序结束前恢复，否则析构时会崩溃
+std::cout.rdbuf(old_buf);
+```
