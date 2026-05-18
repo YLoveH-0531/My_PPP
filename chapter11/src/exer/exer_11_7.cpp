@@ -12,6 +12,18 @@
 #include <cctype>
 #include <string>
 #include <sstream>
+#include <map>
+
+std::string Str_map(const std::string& word)
+{
+    std::map<std::string, std::string> word_map = {
+        {"don't", "do not"},
+        {"can't", "cannot"},
+        {"won't", "will not"}
+    };
+
+    return word_map.count(word) ? word_map[word] : word;
+}
 
 void tolower_and_convert()
 {
@@ -21,20 +33,23 @@ void tolower_and_convert()
         std::istringstream is(line);
         std::string word;
         while (is >> word) {
-            for (auto& ch : word) {
-                ch = std::tolower(static_cast<unsigned char>(ch));
-                if (std::ispunct(ch) && ch != '"' && ch != '-') {
-                    ch = ' ';
+            for (std::string::size_type i = 0; i < word.size(); ++i) {
+                word[i] = std::tolower(static_cast<unsigned char>(word[i]));
+                if (std::ispunct(word[i])) {
+                    if (word[i] != '-' && (i > 0 || i < word.size() - 1)) {
+                        if (!std::isalpha(word[i-1]) || !std::isalpha(word[i+1])) {
+                            word[i] = ' ';
+                        }
+                    }
+                    if (word[i] != '"' && word[i] != '\'') {
+                        word[i] = ' ';
+                    }
                 }
             }
+            word = (Str_map(word) == word) ? word : Str_map(word);
+            std::cout << word << " ";
         }
-
-        if (word == std::string("don't")) {
-            word = "do not";
-        }else if(word == std::string("can't")){
-            word = "cannot";
-        }
-        std::cout << word;
+        std::cout << '\n';
     }
 }
 
