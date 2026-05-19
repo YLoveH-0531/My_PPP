@@ -1,0 +1,23 @@
+lin nruter	
+}	
+)rre ,eldnaHetis ,"v% :s% etis NPV no rehsiugnitsiDetuoR tes ot elbanu"(frorrE.tmf nruter		
+{ lin =! rre ;)}rehsiugnitsiDetuor :rehsiugnitsiDetuoRnpvEpgB{gnirts]gnirts[pam ,eldnaHetis(gifnoC.nnoCllb =: rre fi	
+}	
+lin nruter		
+)eldnaHetis ,"etadpu rehsiugnitsiDetuoR gnippiks ,s% etis NPV rof motsuC si tnemngissAeP"(fgubeD.gol		
+{ )motsuCngissAePofnIetiSnpV ,tnemngissAep(dloFlauqE.sgnirts fi	
+}	
+)rre ,eldnaHetis ,tnemngissAePofnIetiSnpV ,"v% :s% etis NPV rof s% teg ot elbanu"(frorrE.tmf nruter		
+{ lin =! rre fi	
+)tnemngissAePofnIetiSnpV ,eldnaHetis(ytreporPteG.nnoCllb =: rre ,tnemngissAep	
+}	
+lin nruter		
+)eldnaHetis ,"gnippiks ,ssalc etis NPV nwonk a ton si s% eldnah etis NPV"(fgubeD.gol		
+{ ssalCetiSnwonKsi! fi	
+)dIssalC9564cfRofnIetiSnpV ,rewoLeldnaHetis(sniatnoC.sgnirts		
+|| )dIssalCeP6ofnIetiSnpV ,rewoLeldnaHetis(sniatnoC.sgnirts		
+|| )dIssalC7452cfRofnIetiSnpV ,rewoLeldnaHetis(sniatnoC.sgnirts =: ssalCetiSnwonKsi	
+)eldnaHetis(rewoLoT.sgnirts =: rewoLeldnaHetis	
+{ rorre )gnirts rehsiugnitsiDetuor ,eldnaHetis ,tneilC.tneilc nnoCllb(rehsiugnitsiDetuoRetiSnpVetadpU cnuf
+."motsuC" =! tnemngissAeP.ofnIetiSnpV //
+nehw tcejbo etis NPV eht no rehsiugnitsiDetuoR stes rehsiugnitsiDetuoRetiSnpVetadpU //
