@@ -1,18 +1,26 @@
 /**
- * @file exer_11_7.cpp
+ * @file exer_11_8.cpp
  * @author KaKaRot
- * @brief  converts all characters to lower case 
+ * @brief  Modify the program from the previous exercise to read a file and build the set of words from that file.
  * @version 0.1
- * @date 2026-05-17
+ * @date 2026-05-19
  * 
  * @copyright Copyright (c) 2026
- * 
  */
+
 #include <iostream>
+#include <fstream>
 #include <cctype>
 #include <string>
 #include <sstream>
 #include <vector>
+#include <set>
+
+#ifndef DATA_DIR
+#error "DATA_DIR must be defined by CMake. Use cmake to build this project."
+#endif
+
+const std::string DATA = DATA_DIR;
 
 std::string Str_map(std::string word)
 {
@@ -35,11 +43,21 @@ std::string Str_map(std::string word)
     return word;
 }
 
-void tolower_and_convert()
+/**
+ * @brief  Convert the input sentence to lowercase and replace punctuation with spaces, 
+ *         then insert the processed words into the provided set.
+ * @param dic 
+ * @param filename 
+ */
+void tolower_and_convert(std::set<std::string>& dic, const std::string& filename)
 {
-    std::cout << "Input a sentence...\n";
+    std::ifstream file(filename);
+    if (!file) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return;
+    }
     std::string line;
-    while(std::getline(std::cin, line)){
+    while(std::getline(file, line)){
         std::istringstream is(line);
         std::string word;
         while (is >> word) {
@@ -57,14 +75,18 @@ void tolower_and_convert()
             }
             std::string mapped_word = Str_map(word);
             word = (mapped_word == word) ? word : mapped_word;
-            std::cout << word << " ";
+            dic.insert(word);
         }
-        std::cout << '\n';
     }
 }
 
 int main()
 {
-    tolower_and_convert();
+    std::set<std::string> dic;
+    std::string filename{DATA + "exer_11_8_input.txt"};
+    tolower_and_convert(dic, filename);
+    for (const auto& word : dic){
+        std::cout << word << "\n";
+    }
     return 0;
 }

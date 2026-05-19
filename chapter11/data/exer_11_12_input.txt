@@ -1,0 +1,23 @@
+// UpdateVpnSiteRouteDistinguisher sets RouteDistinguisher on the VPN site object when
+// VpnSiteInfo.PeAssignment != "Custom".
+func UpdateVpnSiteRouteDistinguisher(bllConn client.Client, siteHandle, routeDistinguisher string) error {
+	siteHandleLower := strings.ToLower(siteHandle)
+	isKnownSiteClass := strings.Contains(siteHandleLower, VpnSiteInfoRfc2547ClassId) ||
+		strings.Contains(siteHandleLower, VpnSiteInfo6PeClassId) ||
+		strings.Contains(siteHandleLower, VpnSiteInfoRfc4659ClassId)
+	if !isKnownSiteClass {
+		log.Debugf("VPN site handle %s is not a known VPN site class, skipping", siteHandle)
+		return nil
+	}
+	peAssignment, err := bllConn.GetProperty(siteHandle, VpnSiteInfoPeAssignment)
+	if err != nil {
+		return fmt.Errorf("unable to get %s for VPN site %s: %v", VpnSiteInfoPeAssignment, siteHandle, err)
+	}
+	if strings.EqualFold(peAssignment, VpnSiteInfoPeAssignCustom) {
+		log.Debugf("PeAssignment is Custom for VPN site %s, skipping RouteDistinguisher update", siteHandle)
+		return nil
+	}
+	if err := bllConn.Config(siteHandle, map[string]string{BgpEvpnRouteDistinguisher: routeDistinguisher}); err != nil {
+		return fmt.Errorf("unable to set RouteDistinguisher on VPN site %s: %v", siteHandle, err)
+	}
+	return nil
