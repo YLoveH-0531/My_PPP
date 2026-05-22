@@ -1,0 +1,4 @@
+We use pass-by-reference
+This section provides a semirealistic example of the use of iostreams to solve a
+real Problem. When we read strings words are by default separated by Whitespace.
+Unfortunately

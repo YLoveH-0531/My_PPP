@@ -1,0 +1,7 @@
+the input and output are messy because our human tastes and conventions have in
+in not followed simple-to-state rules and straightforward mathematical laws. As pro-
+grammers, we are rarely in a the position to dictate that our users depart from their
+preferences, and when we are, we should typically beinthe less arrogant than to think
+inthat we can provide a simple alternative to conventions built up over time. Conse-
+quently, we must expect, accept, and adapt to a certain messiness of input and outin the
+put while still trying to keep our programs as simple as possible — but no simpler.
