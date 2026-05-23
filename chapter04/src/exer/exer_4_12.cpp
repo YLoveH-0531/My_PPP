@@ -38,48 +38,10 @@ void judgePrime(const std::string& input, std::vector<int>& prime_vec)
       }
    }
 }
-#include <iostream>
-#include <vector>
-#include <sstream>
-#include <string>
-#include <algorithm>
-
-static const std::vector<int> prime_cons{2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97};
-
-void judgePrime(const std::string& input, std::vector<int>& prime_vec)
-{
-   std::stringstream ss(input);
-   std::string token;
-   while(ss >> token)
-   {
-      try
-      {
-         std::size_t pos;
-         int number = std::stoi(token, &pos);
-         if (pos == token.size() && (std::find(prime_cons.cbegin(), prime_cons.cend(), number) != prime_cons.end()))
-         {
-            if(std::find(prime_vec.cbegin(), prime_vec.cend(), number) == prime_vec.end())
-            {
-               prime_vec.emplace_back(number);
-            }  
-         }        
-      }
-      catch(const std::exception&)
-      {
-        continue;
-      }
-   }
-}
 
 int main()
 {
-int main()
-{
 
-   std::cout << "===========================================\n";
-   std::cout << "                 Prime Game                \n";
-   std::cout << "   Enter a number(0 ~100) ('q' to quit )   \n";
-   std::cout << "===========================================\n";
    std::cout << "===========================================\n";
    std::cout << "                 Prime Game                \n";
    std::cout << "   Enter a number(0 ~100) ('q' to quit )   \n";
