@@ -56,10 +56,17 @@ Link* Link::advance(int n) const{
     return p;
 }
 
-Link* Link::erase() { 
-    if (prev) prev->succ = succ;
-    if (succ) succ->prev = prev;
-    return succ;
+Link* Link::erase() {
+    Link* tmp = succ;
+    if (prev) {
+        prev->succ = succ;
+    }
+    if (succ) {
+        succ->prev = prev;
+    }
+    prev = nullptr;
+    succ = nullptr;
+    return tmp;
 }
 
 Link* Link::add_ordered(Link* p){
@@ -70,7 +77,9 @@ Link* Link::add_ordered(Link* p){
     }
 
     Link* n = this;
-    while((n = n->succ) && p->god.name >= n->succ->god.name)
+    while(n->succ && p->god.name >= n->succ->god.name){
+        n = n->succ;
+    }
     n->add(p);
 
     return this;

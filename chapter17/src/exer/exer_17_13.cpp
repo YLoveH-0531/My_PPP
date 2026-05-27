@@ -24,7 +24,7 @@ void print_all(const std::string str, Link* p)
         std::cout << p->get_data().name << ' '
                   << p->get_data().mythology << ' '
                   << p->get_data().vehicle << ' '
-                  << p->get_data().weapon << "}";
+                  << p->get_data().weapon << "}\n";
         p = p->next();
     }
 }
@@ -44,26 +44,29 @@ void link_exam()
     Link* Roman_gods = nullptr;
 
     while (gods){
-        if (gods->get_data().mythology == "Greek"){
+
+        Link* current_god = gods;
+        gods = gods->erase();
+
+        if (current_god->get_data().mythology == "Greek"){
             if (!greek_gods){
-                greek_gods = gods;
+                greek_gods = current_god;
             }else{
-                greek_gods = greek_gods->add_ordered(gods);
+                greek_gods = greek_gods->add_ordered(current_god);
             }
-        }else if (gods->get_data().mythology == "Norse"){
+        }else if (current_god->get_data().mythology == "Norse"){
             if (!Norse_gods){
-                Norse_gods = gods;
+                Norse_gods = current_god;
             }else{
-                Norse_gods = Norse_gods->add_ordered(gods);
+                Norse_gods = Norse_gods->add_ordered(current_god);
             }
-        }else if (gods->get_data().mythology == "Roman"){
+        }else if (current_god->get_data().mythology == "Roman"){
             if (!Roman_gods){
-                Roman_gods = gods;
+                Roman_gods = current_god;
             }else{
-                Roman_gods = Roman_gods->add_ordered(gods);
+                Roman_gods = Roman_gods->add_ordered(current_god);
             }          
         }
-        gods = gods->erase();
     }
 
     //print_all("", gods);
