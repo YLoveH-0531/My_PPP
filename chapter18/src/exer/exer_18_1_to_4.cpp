@@ -17,10 +17,12 @@ char* strdup(const char* pc)
     while (*p++ != 0){ count++; }
     
     p = pc;
-    char* pa = new char[count];
+    char* pa = new char[count + 1];
+    char* pb = pa;
     for (int i = 0; i < count; i++){
-        *pa++ = *p++;
+        *pb++ = *p++;
     }
+    *pb ='\0';
     return pa;
 }
 
@@ -34,10 +36,12 @@ char* strdup(const char* pc, int max)
     }
     
     p = pc;
-    char* pa = new char[count];
+    char* pa = new char[count + 1];
+    char* pb = pa;
     for (int i = 0; i < count; i++){
-        *pa++ = *p++;
+        *pb++ = *p++;
     }
+    *pb = '\0';
     return pa;
 }
 
@@ -57,15 +61,45 @@ char* findx(const char* s, const char* x)
 
 char* findx(const char* s, const char* x, int max)
 {
-
+    for (int i = 0; i < max; i++) {
+        const char* s1 = s + i;
+        const char* x1 = x;
+        while (*x1 != 0 && (s1 - s) < max && *x1 == *s1) {
+            x1++;
+            s1++;
+        }
+        if (*x1 == 0) { return const_cast<char*>(s + i); }
+    }
+    return nullptr;    
 }
 
 int strcmp(const char* s1, const char* s2)
 {
-
+    for (; *s1 != 0 && *s2 != 0; s1++, s2++) {
+        if (*s1 < *s2) { return -1; }
+        if (*s1 > *s2) { return 1; }
+    }
+    if (*s1 == 0 && *s2 == 0) { 
+        return 0; 
+    }else if (*s1 == 0 && *s2 != 0) {
+        return -1;
+    }else{
+        return 1;
+    }
 }
 
 int strcmp(const char* s1, const char* s2, int max)
 {
-
+    int count = 0;
+    for (; *s1 != 0 && *s2 != 0 && ++count <= max ; s1++, s2++) {
+        if (*s1 < *s2) { return -1; }
+        if (*s1 > *s2) { return 1; }
+    }
+    if (*s1 == 0 && *s2 != 0) { 
+        return -1; 
+    }else if (*s1 != 0 && *s2 == 0) {
+        return 1;
+    }else{
+        return 0;
+    }
 }
