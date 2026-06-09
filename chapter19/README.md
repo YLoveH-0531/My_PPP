@@ -15,3 +15,5 @@ some concepts in C++
  it applies to all kinds of resources, acquire a resource in the constructor for some object that manages
 it, and release it again in the matching destructor. Examples of resources that are
 usually best dealt with in this way include database locks, sockets, and I/O buffers. 
+
+    sv.read_val(iss);报错，error: no match for ‘operator>>’ (operand types are ‘std::istream’ {aka ‘std::basic_istream<char>’} and ‘std::vector<int>’

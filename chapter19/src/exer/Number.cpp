@@ -45,7 +45,7 @@ void test_ctor() {
     Number<int> a;              // 默认构造，val = 0
     Number<int> b(42);          // 左值带参
     Number<int> c(b);           // 拷贝构造
-    Number<int> d(std::move(Number<int>(99)));  // 移动构造
+    Number<int> d(Number<int>(99));  // 移动构造
 
     // 通过加法间接验证值（a=0, b=42）
     Number<int> sum = b + a;    // 42 + 0 = 42
