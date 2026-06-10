@@ -166,11 +166,11 @@ void test_S_vector() {
 
     // read_val 用 >> 读入（这正是 bonus 题要求的）
     std::istringstream iss("{ 10, 20, 30, 40 }");
-    // home can not be build
-    // sv.read_val(iss);
-    // check(!iss.fail(), "read_val 流状态正常");
-    // check(sv.get().size() == 4, "read_val 后 size=4");
-    // check(sv.get()[3] == 40,    "read_val 后最后一个元素=40");
+    //home can not be build
+    sv.read_val(iss);
+    check(!iss.fail(), "read_val 流状态正常");
+    check(sv.get().size() == 4, "read_val 后 size=4");
+    check(sv.get()[3] == 40,    "read_val 后最后一个元素=40");
 }
 
 // ============ 测试 7：连续读取 ============
