@@ -300,3 +300,108 @@ lvalue  xvalue      prvalue
 > C++ 把"对象 = 受管理的内存"贯彻到底。函数调用与表达式求值不断产生拷贝和临时对象，编译器一面用**确定性的构造/析构**保证资源不泄漏，一面用**返回槽 + 拷贝省略**抹掉不必要的搬运。抓住"对象就是内存、生命周期被精确管理"这一条，拷贝构造、RVO/NRVO、`std::move`、临时对象、值类别就都是它的不同侧面。
 
 > 延伸阅读：移动语义与本节 ⑤ 见 **Effective Modern C++ Item 23/25**；栈帧、调用约定、内存布局见 **《程序员的自我修养：链接、装载与库》** ch.1-9。
+
+---
+
+# 列表初始化（List-initialization）判定顺序
+
+> 参考 cppreference [list_initialization](https://en.cppreference.com/w/cpp/language/list_initialization)
+
+## 两种语法形式
+
+```cpp
+// 直接列表初始化（direct-list-init）—— 可调 explicit 构造函数
+T obj{args};
+T obj{};
+
+// 拷贝列表初始化（copy-list-init）—— 不能调 explicit 构造函数
+T obj = {args};
+func({args});      // 函数实参
+return {args};     // 返回值
+```
+
+```cpp
+struct S { explicit S(int); };
+S a{5};      // ✅ 直接列表初始化，可调 explicit
+S b = {5};   // ❌ 拷贝列表初始化，不能调 explicit
+```
+
+## 判定顺序（核心，对 `T obj{...}` 按此顺序逐条试）
+
+1. **T 是聚合 + 用了指定初始化器**（`{.x=1, .y=2}`）→ 聚合初始化（C++20）
+2. **T 是聚合 + braced-list 是单个元素且类型是 T 或派生类** → 用该元素拷贝/移动初始化
+3. **T 是聚合** → 聚合初始化（逐成员按顺序初始化）
+4. **空 `{}` + T 是有默认构造函数的类类型** → 值初始化（调默认构造）
+5. **T 是 `std::initializer_list<E>` 特化** → 直接用列表构造这个 initializer_list
+6. **T 是类类型** → 构造函数重载决议：
+   - **先**只考虑 `initializer_list` 构造函数
+   - 没有可用的 initializer_list 构造函数，**再**考虑所有构造函数
+7. **T 是非类类型、且单元素** → 直接转换（禁止窄化）
+8. **空 `{}`** → 值初始化
+
+## 关键澄清（理解这套顺序的要点）
+
+### ① 聚合判定（第3步）在构造函数（第6步）之前，但两者互斥
+
+```
+聚合 ⟺ 没有用户声明的构造函数（+ 无 private 非静态成员、无基类、无虚函数）
+```
+
+- **有构造函数的类型**（vector/pair/自定义类）→ 不是聚合 → 跳过第3步 → 走第6步
+- **无构造函数的类型**（`struct Point{int x,y;}`、`node`）→ 是聚合 → 走第3步（也没构造函数可竞争）
+
+所以"先判聚合还是先判构造函数"在结果上没区别——一个类型不可能既是聚合又有构造函数。
+**实用记法：先看类型有没有构造函数——有就走构造函数，没有就走聚合。**
+
+### ② 第5条是"花括号 → initializer_list"唯一的桥
+
+`std::initializer_list` **没有接收元素的公开构造函数**（只有默认构造 + 拷贝构造）。
+花括号能变成 initializer_list，靠的是**编译器魔法**：分配连续底层数组、设定生命周期。
+这种"任意个元素 + 连续内存布局"的动作，普通构造函数表达不出来 → 必须有第5条这个特例。
+
+第5条在**每一层嵌套**都会触发——目标类型是 initializer_list 时就物化：
+```cpp
+EvilContainer(std::initializer_list<T> left, std::initializer_list<T> right);
+EvilContainer<int> x = { {1,2}, {3,4} };
+// 外层：第6条选这个构造函数（2个 il 参数）
+//   {1,2} → 参数 left（il 类型）→ 第5条物化
+//   {3,4} → 参数 right（il 类型）→ 第5条物化
+```
+若第5条消失：内层 `{1,2}` 无法物化成 initializer_list → 整个表达式编译失败，连 `vector{1,2,3}` 也会一起失效。
+
+### ③ initializer_list 构造函数会"劫持"普通构造函数（第6步内）
+
+只要有可用的 `initializer_list` 构造函数，它压制所有普通构造函数：
+
+```cpp
+std::vector<int> v1(3, 0);   // 圆括号：vector(size_t,int) → {0,0,0}
+std::vector<int> v2{3, 0};   // 花括号：il 构造优先 → {3,0}（2个元素！）
+std::vector<int> v3(3);      // 圆括号：3 个默认元素
+std::vector<int> v4{3};      // 花括号：1 个元素 {3}
+```
+
+### ④ 列表初始化禁止窄化转换（圆括号不禁止）
+
+```cpp
+int a(3.14);   // ✅ 圆括号：允许截断 → a=3
+int a{3.14};   // ❌ 花括号：窄化转换，编译错误
+char c{300};   // ❌ 超出 char 范围
+```
+
+被禁的窄化：浮点→整数、长浮点→短浮点超范围、整数→浮点、整数→更窄整数超范围。
+
+### ⑤ `{}` 不等于"总是 initializer_list"
+
+花括号是统一的语法入口，背后有多条路：
+
+```cpp
+Point p{1, 2};            // 聚合初始化——不碰 initializer_list
+Widget w{1, 2.0};         // 普通构造函数 Widget(int,double)——不碰
+std::string s{'a','b'};   // initializer_list 构造函数——这条才用
+int x{5};                 // 单值初始化——不碰
+std::vector<int> v{};     // 值初始化（空）——不碰
+```
+
+## 一句话总纲
+
+> 列表初始化按固定顺序判定：**聚合 → initializer_list 类型（第5条，唯一的"花括号→il"之桥）→ 构造函数（il 构造优先，会劫持普通构造）→ 单元素转换**。它比圆括号多两个特性：**禁止窄化**、**拷贝形式不能调 explicit**；代价是 il 构造函数的"劫持"（`vector{3,0}` vs `vector(3,0)`）。记住：聚合与构造函数互斥，`{}` 也不总是走 initializer_list。
