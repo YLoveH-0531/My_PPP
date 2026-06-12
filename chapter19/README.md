@@ -521,3 +521,129 @@ auto sum(Args&&... args) {
 
 一句话总结:你对「异常传播路径」的理解完全正确,但漏了「构造失败的对象其析构函数不被调用」这条规则;正因为这条规则,结果是资源泄漏,而不是残次品对象
   在析构时出问题
+
+---
+
+## 12. 手写 `vector` 的异常安全与资源管理（来自 `Vector.h` 练习）
+
+围绕自己实现的 `KaKaRot::vector` 反复打磨出来的三组核心要点。
+
+### 12.1 分配器层：`construct`/`destroy` 与 RAII 回滚守卫
+
+#### `std::allocator::construct/destroy` 的标准变迁
+
+| 标准 | 状态 | 替代方案 |
+|------|------|---------|
+| C++11/14 | 可用 | — |
+| C++17 | **弃用（deprecated）** | `std::allocator_traits<A>::construct/destroy` |
+| C++20 | **删除（removed）** | 同上，否则编译失败 |
+
+```cpp
+// 旧（仅 C++17 及以前）
+alloc.construct(p, args...);
+alloc.destroy(p);
+
+// 规范写法（任意标准都可，C++20 必须）
+std::allocator_traits<A>::construct(alloc, p, args...);
+std::allocator_traits<A>::destroy(alloc, p);
+```
+
+> `allocator_traits` 还顺带统一处理「分配器传播（`propagate_on_*`）」和「分配器没有 `construct` 成员」的情况。
+
+#### RAII 回滚守卫：批量构造的异常安全骨架
+
+裸的「`allocate` + 循环 `construct`」一旦中途抛异常，已分配的内存 + 已构造的元素全部泄漏。把「缓冲区 + 已构造计数」绑到一个**局部对象**上，靠析构兜底：
+
+```cpp
+struct AllocGuard {
+    A& a; T* buf; size_t cap_n; size_t built; bool committed;
+    AllocGuard(A& a_, size_t n)
+        : a(a_), buf(a_.allocate(n)), cap_n(n), built(0), committed(false) {}
+    void add()     { ++built; }              // 每 construct 成功一个就"记账"
+    void release() { committed = true; }     // 全部成功后"提交"，转交所有权
+    ~AllocGuard() {
+        if (committed) return;               // 已提交 → 不回滚
+        for (size_t i = 0; i < built; i++) a.destroy(buf + i);  // 逆向清理
+        a.deallocate(buf, cap_n);
+    }
+};
+```
+
+使用范式（计数构造 / `reserve` / 拷贝构造 / il 构造都用这一套）：
+
+```cpp
+AllocGuard g(alloc, n);
+for (size_t i = 0; i < n; i++) { alloc.construct(g.buf + i, ...); g.add(); }
+g.release();                                 // 成功才提交
+start = g.buf; finish = g.buf + n; cap = g.buf + n;
+```
+
+> **`add()` 记账，`~AllocGuard()` 在异常时按账本清理，C++ 的栈展开保证析构一定执行。** 这就是把裸指针"升级"成能自动清理的 RAII 对象。
+
+### 12.2 构造函数的异常语义（关键认知）
+
+> **构造函数抛异常 ⇒ 该对象被视为「从未构造成功」⇒ 它自己的析构函数绝不被调用；但已构造完成的成员/基类会被正常析构。**
+
+```cpp
+struct Widget {
+    Member m;                 // 进入函数体前已构造完成
+    Widget() { throw ...; }   // 函数体抛异常
+    ~Widget() { ... }         // ← 不会被调用！
+};
+// 实测输出：Member 构造 → Member 析构（成员被清理）→ 捕获
+//          但没有 "Widget 析构"
+```
+
+对手写 `vector` 的含义：
+
+- 成员 `start/finish/cap` 是**裸指针**，其"析构"是空操作 → 不会释放指向的内存。
+- 构造途中抛异常 + `~vector()` 不执行 → **纯内存泄漏**（不是"残次品对象析构时出错"）。
+- 标准为何这样设计：若强行调 `~vector()`，会对「只构造了一半、却被 `finish` 标记为全满」的内存做析构 → **对未初始化内存析构 = UB**。两害相权，标准选「不调析构」，代价是泄漏——而泄漏正好用 **12.1 的 RAII 守卫** 来堵。
+
+常见误区纠正：
+
+| 误以为 | 实际 |
+|--------|------|
+| 异常上抛时对象已构造成"残次品" | 对象从未诞生，调用方那个变量不存在 |
+| 析构残次品时会出问题 | `~vector()` 根本不跑，谈不上析构出错 |
+| 成员也不管了 | 已构造完成的成员**会**被析构（只是裸指针清理不了内存） |
+
+### 12.3 拷贝控制：copy-and-swap
+
+#### 「先毁后建」的二次析构 UB
+
+```cpp
+// 反面教材：
+for (T* p = start; p < finish; p++) alloc.destroy(p);   // ① 先毁旧元素
+std::uninitialized_copy(rhs.begin(), rhs.end(), start);  // ② 可能抛异常
+finish = start + rhs.size();
+// 若 ② 抛异常：[start,finish) 已是裸内存，但 finish 仍指旧尾
+// → ~vector 再次 destroy 这段 → double destroy（UB）
+```
+
+#### copy-and-swap 修法（强异常保证）
+
+```cpp
+vector& operator=(const vector& rhs) {
+    vector tmp(rhs);    // 拷贝失败发生在改动 *this 之前
+    swap(tmp);          // swap 是 noexcept 的 O(1) 指针交换
+    return *this;
+}                       // tmp 析构自动清理旧资源
+```
+
+- **强保证**：拷贝 `rhs` 出错时 `*this` 完全不变。
+- 无"先毁后建" → 无二次析构 UB。
+- 自赋值天然安全（`tmp` 是独立副本），仅多一次拷贝。
+
+#### 为什么不用「按值统一赋值」`operator=(vector rhs)`
+
+```cpp
+vector& operator=(vector rhs);        // 按值：左值→拷贝、右值→移动，本可统一两者
+vector& operator=(vector&& rhs);      // 但与它共存会"重载二义"（实测编译报错）
+```
+
+- 按值版很优雅，但**和单独的 `noexcept` 移动赋值并存会二义**。
+- 对容器而言 **`noexcept` 移动赋值很关键**：`std::vector<vector<T>>` 扩容时靠 `move_if_noexcept` 决定走移动还是拷贝。
+- **结论**：采用「`const&` 版 copy-and-swap」+「专门的 `noexcept` 移动赋值」两个重载——既无二义，又保住 noexcept。
+
+> 一句话：copy-and-swap 用"先建副本、再交换、旧的随副本析构"的顺序，把异常风险挡在改动自身之前，天然获得强保证；对容器要单独保留 `noexcept` 移动赋值。

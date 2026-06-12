@@ -61,25 +61,36 @@ public:
         finish = g.buf + count;
         cap    = g.buf + count;
     }
-    vector(std::initializer_list<T> il) : start(il.size() ? alloc.allocate(il.size()) : nullptr),
-                                          finish(start ? start + il.size() : nullptr),
-                                          cap(start ? start + il.size() : nullptr) 
-                                          { std::uninitialized_copy(il.begin(), il.end(), start); }
-    vector(const vector& rhs) : alloc(rhs.alloc), 
-                                start(rhs.start ? alloc.allocate(rhs.capacity()) : nullptr), 
-                                finish(start ? start + rhs.size() : nullptr), 
-                                cap(start ? start + rhs.capacity() : nullptr) 
-                                { std::uninitialized_copy(rhs.begin(), rhs.end(), start); }
+    vector(std::initializer_list<T> il) : start(nullptr), finish(nullptr), cap(nullptr)
+    {
+        if (il.size() == 0) { return; }
+        AllocGuard g(alloc, il.size());                 // 拷贝途中抛异常自动回滚并释放缓冲区
+        for (const T* p = il.begin(); p != il.end(); ++p) { alloc.construct(g.buf + g.built, *p); g.add(); }
+        g.release();
+        start  = g.buf;
+        finish = g.buf + il.size();
+        cap    = g.buf + il.size();
+    }
+    vector(const vector& rhs) : alloc(rhs.alloc), start(nullptr), finish(nullptr), cap(nullptr)
+    {
+        if (rhs.capacity() == 0) { return; }            // 保留原行为：按 rhs 的 capacity 分配
+        AllocGuard g(alloc, rhs.capacity());            // 拷贝途中抛异常自动回滚
+        for (std::size_t i = 0; i < rhs.size(); i++) { alloc.construct(g.buf + i, rhs[i]); g.add(); }
+        g.release();
+        start  = g.buf;
+        finish = g.buf + rhs.size();
+        cap    = g.buf + rhs.capacity();
+    }
+    // copy-and-swap: 先拷贝构造 tmp，再与 *this 交换。
+    //   - 拷贝 rhs 途中抛异常时 *this 完全不受影响（强异常保证）；
+    //   - 不再有"先 destroy 旧元素、再 copy"导致的二次析构 UB；
+    //   - 自赋值天然安全（tmp 是独立副本，仅多一次拷贝）。
+    //   注：用 const& 而非按值传参，是为了和下面 noexcept 的移动赋值共存而不产生二义。
     vector& operator=(const vector& rhs)
     {
-        if (this == &rhs) { return *this; }
-        if (capacity() < rhs.size()) { reserve(rhs.capacity());}
-        for (T* p = start; p < finish; p++) {
-            alloc.destroy(p);
-        }
-        std::uninitialized_copy(rhs.begin(), rhs.end(), start);
-        finish = start + rhs.size();
-        return *this;   
+        vector tmp(rhs);
+        swap(tmp);
+        return *this;
     }
     vector(vector&& rhs) noexcept : alloc(std::move(rhs.alloc)), start(rhs.start), 
     finish(rhs.finish), cap(rhs.cap) 
@@ -139,13 +150,23 @@ public:
     }
     void push_back(T&& value)
     {
-        if (size() == capacity()) { reserve(capacity() ? 2 * capacity() : 8); }
+        if (size() == capacity()) {
+            T tmp(std::move(value));                    // 先固化：value 可能引用容器内元素，reserve 搬移后会失效
+            reserve(capacity() ? 2 * capacity() : 8);
+            alloc.construct(finish++, std::move(tmp));
+            return;
+        }
         alloc.construct(finish++, std::move(value));
     }
     template<typename... Args>
-    void emplace_back(Args&&... args) 
+    void emplace_back(Args&&... args)
     {
-        if (size() == capacity()) { reserve(capacity() ? 2 *capacity() : 8); }
+        if (size() == capacity()) {
+            T tmp(std::forward<Args>(args)...);         // 先固化：args 可能引用容器内元素，reserve 搬移后会失效
+            reserve(capacity() ? 2 * capacity() : 8);
+            alloc.construct(finish++, std::move(tmp));
+            return;
+        }
         alloc.construct(finish++, std::forward<Args>(args)...);
     }
     template<typename... Args>
@@ -153,14 +174,18 @@ public:
     {
         std::size_t offset = pos - start;
         if (pos < start || pos > finish) { throw std::out_of_range("out of range!");}
+        // 在任何扩容/移位之前先把新值固化到 tmp：
+        //   1) args 可能引用容器内元素，reserve/移位会令其失效 —— 先固化即可规避（别名安全）；
+        //   2) tmp 构造若抛异常，此刻容器尚未改动，*this 完好（强异常保证）。
+        T tmp(std::forward<Args>(args)...);
         if (size() == capacity()) { reserve(capacity() ? 2 *capacity() : 8); }
         pos = start + offset;
         if (pos == finish) {
-            alloc.construct(finish, std::forward<Args>(args)...);
+            alloc.construct(finish, std::move(tmp));
         }else{
             alloc.construct(start + size(), std::move(*(start + size() -1)));
             for (std::size_t i = size() - 1; i > offset; i--) { start[i] = std::move(start[i - 1]); }
-            *pos = T(std::forward<Args>(args)...);
+            *pos = std::move(tmp);
         }
         finish++;
         return pos;
@@ -181,16 +206,34 @@ public:
     }
     void resize(std::size_t n, const T& value = T{})
     {
-        reserve(n);
-        for (std::size_t i = size(); i < n; i++) { alloc.construct(start + i, value); }
-        for (std::size_t i = n; i < size(); i++) { alloc.destroy(start + i); }
-        finish  = start + n;
+        if (n > size()) {
+            reserve(n);
+            // 每构造成功一个就同步 finish：途中抛异常时 [start,finish) 始终与实际已构造元素一致，
+            // ~vector 能正确清理，不会泄漏（基本异常保证）。
+            while (size() < n) { alloc.construct(finish, value); ++finish; }
+        } else {
+            while (size() > n) { alloc.destroy(--finish); }
+        }
     }
     void clear()
     {
         for (T* p = start; p < finish; p++) { alloc.destroy(p); }
         finish = start;
     }
+
+    // ─── TODO: 待补充的接口（以后再写） ───────────────────────────────────
+    //   iterator insert(T* pos, const T& value);            // 单元素插入（参考 emplace 的移位逻辑）
+    //   iterator insert(T* pos, T&& value);
+    //   iterator insert(T* pos, std::size_t n, const T& v); // 区间插入：先腾出 n 个空位再填充
+    //   template<class It> iterator insert(T* pos, It first, It last);
+    //   iterator erase(T* pos);                             // 删除单元素：pos 之后的元素整体前移一格
+    //   iterator erase(T* first, T* last);                  // 删除区间
+    //   void assign(std::size_t n, const T& value);         // 清空后重填 n 个 value
+    //   template<class It> void assign(It first, It last);
+    //   void assign(std::initializer_list<T> il);
+    //   实现要点：复用 reserve() 扩容；移位用 std::move；插入前先把实参固化到临时对象
+    //            （规避自引用/别名，参考 emplace）；erase 用赋值前移 + 末尾 destroy。
+    // ──────────────────────────────────────────────────────────────────────
 
     //Capacity
     std::size_t size() const noexcept { return finish - start; }
@@ -239,6 +282,31 @@ private:
     T* finish;
     T* cap;
 };
+
+// 非成员相等比较：先比大小，再逐元素用 T::operator== 比较。
+template <typename T, typename A>
+bool operator==(const vector<T, A>& lhs, const vector<T, A>& rhs)
+{
+    if (lhs.size() != rhs.size()) { return false; }
+    for (std::size_t i = 0; i < lhs.size(); i++) {
+        if (!(lhs[i] == rhs[i])) { return false; }
+    }
+    return true;
+}
+
+template <typename T, typename A>
+bool operator!=(const vector<T, A>& lhs, const vector<T, A>& rhs)
+{
+    return !(lhs == rhs);
+}
+
+// 非成员 swap：与类放在同一命名空间，使 `using std::swap; swap(a, b);` 能经 ADL 找到它，
+// 从而走 O(1) 的指针交换，而不是退化成标准库基于移动的通用 swap。
+template <typename T, typename A>
+void swap(vector<T, A>& lhs, vector<T, A>& rhs) noexcept
+{
+    lhs.swap(rhs);
+}
 
 }
 #endif //VECTOR_H
