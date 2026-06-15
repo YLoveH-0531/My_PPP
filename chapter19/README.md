@@ -56,63 +56,11 @@ fclose(fp);   // 可能根本跑不到
 
 ---
 
-## 4. allocator：把"分配内存"和"构造对象"拆开
-
-`new T[n]` 把**分配内存**和**构造对象**捆死了。`allocator` 把两件事分开：
-
-```cpp
-allocator<T> a;
-T* p = a.allocate(n);       // 只拿原始内存，不构造任何对象
-a.construct(p, args...);    // 在指定位置构造对象（placement new）
-a.destroy(p);               // 只析构，不释放内存
-a.deallocate(p, n);         // 只释放内存
-```
-
-**为什么 vector 必须用 allocator**：
-
-```
-[已构造][已构造][已构造][ 空 ][ 空 ]   ← capacity=5, size=3
- <────── size ──────>
- <──────────── capacity ──────────>
-```
-
-- `new T[capacity]` 会**强制构造全部 capacity 个对象**——浪费，且要求 T 能默认构造
-- allocator 只构造前 `size` 个，后面留着原始内存
-
-**为什么不能在未初始化内存上直接赋值**：
-
-```cpp
-// string 的 operator= 第一步是 delete[] 旧数据
-// 未初始化内存里是垃圾指针，delete 垃圾地址 → 崩溃
-// 必须用 placement new（构造）而不是赋值
-new(p) T(src);   // ✅ 从零构造，不假设原有状态
-*p = src;        // ❌ 假设 *p 已是合法对象
-```
-
----
-
-## 5. 接口设计原则：快的可以变慢，慢的无法变快
-
-```cpp
-// 无检查（快）→ 在它之上叠加有检查（慢）：✅ 可以
-T& at(size_t i) {
-    if (i >= size_) throw out_of_range{};
-    return (*this)[i];   // 复用无检查的 operator[]
-}
-
-// 有检查（慢）→ 想造出无检查（快）：❌ 做不到
-// at() 内部的 if 永远在跑，去不掉
-```
-
-> 设计原则：**把最精简、最快的版本做底层，把额外功能叠在上层**。
-
----
-
-## 6. 模板两阶段名称查找（Two-Phase Name Lookup）
+## 4. 模板两阶段名称查找（Two-Phase Name Lookup）
 
 > **这是 C++ 模板里最容易踩的坑之一**，直接影响跨编译器的可移植性。
 
-### 6.1 基础：普通函数的名称查找
+### 4.1 基础：普通函数的名称查找
 
 普通函数调用一个名字，编译器同时做两件事：
 
@@ -134,7 +82,7 @@ void test() {
 
 **ADL 的意义**：`std::cout << x` 能找到 `std::operator<<`，就是因为 `cout` 的类型在 `std`，ADL 把 `std` 加进来了。
 
-### 6.2 依赖名称 vs 非依赖名称
+### 4.2 依赖名称 vs 非依赖名称
 
 ```cpp
 template<typename T>
@@ -144,22 +92,22 @@ void func() {
 }
 ```
 
-### 6.3 两阶段规则
+### 4.3 两阶段规则
 
 | 阶段 | 时机 | 查找方式 | 查什么 |
 |------|------|---------|--------|
-| **第一阶段** | 模板**定义时** | 普通非限定查找（不含ADL） | 定义点可见的所有名称 |
+| **第一阶段** | 模板**定义时** | 普通非限定查找（不含 ADL） | 定义点可见的所有名称 |
 | **第二阶段** | 模板**实例化时** | **只做 ADL** | 实参类型命名空间里的名称 |
 
 **关键**：第二阶段**只做 ADL，不再做普通查找**。
 
-### 6.4 ADL 查哪些命名空间
+### 4.4 ADL 查哪些命名空间
 
 对类型 `T`，ADL 加入：
 - `T` 直接所在的命名空间
 - `T` 的所有基类的命名空间
 - `T` 是类模板实例（如 `vector<int>`）时：模板本身的命名空间（`std`）+ 每个模板参数的命名空间
-- T 是指针/引用/数组时，递归地处理指向的类型
+- `T` 是指针/引用/数组时，递归地处理指向的类型
 - **内置类型（int/double 等）不贡献任何命名空间**
 
 ```cpp
@@ -168,7 +116,7 @@ void func() {
 // → 全局命名空间的 operator>> 不会被 ADL 找到
 ```
 
-### 6.5 实际踩坑案例（本章 drill_19_1.h）
+### 4.5 实际踩坑案例（本章 drill_19_1.h）
 
 ```cpp
 // ❌ 原来的顺序（错误）：
@@ -203,7 +151,7 @@ template<typename T>
 struct S { void read_val(std::istream& is); };
 ```
 
-### 6.6 GCC vs Clang 的行为差异
+### 4.6 GCC vs Clang 的行为差异
 
 | 编译器 | 行为 | 是否符合标准 |
 |--------|------|------------|
@@ -212,68 +160,7 @@ struct S { void read_val(std::istream& is); };
 
 > **结论**：只在 GCC 上能跑的模板代码，不等于正确。养成习惯：**模板里调用的全局命名空间函数，必须在模板定义之前声明**。
 
----
-
-## 7. 运算符设计规范
-
-从本章练习总结的高频错误和规范：
-
-### operator= 必须 return *this
-```cpp
-T& operator=(const T& rhs) {
-    if (this == &rhs) return *this;
-    // ... 赋值逻辑
-    return *this;   // ← 必须！漏掉是 UB（函数无返回值）
-}
-```
-
-### operator+ vs operator+=
-```cpp
-// + ：不修改自身，返回新对象，加 const
-Number operator+(const Number& rhs) const {
-    return Number(val + rhs.val);
-}
-
-// += ：修改自身，返回自身引用，不加 const
-Number& operator+=(const Number& rhs) {
-    val += rhs.val;
-    return *this;
-}
-```
-
-### 比较运算符加 const
-```cpp
-bool operator==(const T& rhs) const { ... }  // ✅ const：不修改对象
-bool operator==(const T& rhs) { ... }         // ❌ const T 对象无法调用
-```
-
-### 移动构造要用 std::move
-```cpp
-Number(T&& t) : val(std::move(t)) {}   // ✅ 真正移动
-Number(T&& t) : val(t) {}             // ❌ t 是右值引用但 val(t) 是拷贝
-```
-
----
-
-## 8. 模板的鸭子类型（Duck Typing）
-
-模板不关心类型的名字，只关心它**支持哪些操作**：
-
-```cpp
-// inner_product 隐式要求 T 支持 * 和 +=
-// 只要满足这个 concept，任何类型都能用：
-inner_product<int>(v1, v2);            // ✅
-inner_product<double>(v1, v2);         // ✅
-inner_product<Number<int>>(v1, v2);    // ✅ 自定义类型同样可以
-```
-
-这是泛型编程的核心威力：**写一次，适用于所有满足 concept 的类型**。
-
----
-
-## 9. ADL 的历史背景与本质
-
-### 9.1 ADL 为什么存在——工程问题，不是哲学
+### 4.7 ADL 为什么存在——工程问题，不是哲学
 
 命名空间是 **C++98** 才加入的。加进来后立刻暴露了一个兼容性问题：
 
@@ -287,7 +174,7 @@ std::operator<<(std::cout, x);   // 极丑，链式调用根本没法写
 
 ADL（Koenig Lookup，以发明者 Andrew Koenig 命名）**就是为了修这个兼容性问题**而引入的——让原本能工作的运算符语法在加了命名空间之后继续工作。
 
-### 9.2 ADL 解决的是调用侧的问题
+### 4.8 ADL 解决的是调用侧的问题
 
 **"定义在一起"不等于"调用时能找到"**——这是关键。
 
@@ -309,7 +196,7 @@ int main() {
 - **调用侧**：调用者在命名空间外面，普通查找进不去——这是问题
 - **ADL**：看到参数类型 `Geo::Point`，自动把 `Geo` 加进查找范围——这是解法
 
-### 9.3 ADL 的实质
+### 4.9 ADL 的实质
 
 和引用是"好看的指针"一样，ADL 是一个**编译期名称查找规则的扩展**：
 
@@ -325,7 +212,7 @@ Geo::operator<<(std::cout, p);
 
 **没有运行时开销，没有虚表，纯粹是编译期的名字解析规则**——和引用一样，是让代码更自然的语法层机制。
 
-### 9.4 使用时形成的惯例
+### 4.10 使用时形成的惯例
 
 ADL 引入后，顺带确立了一个 C++ 惯例：
 
@@ -344,7 +231,7 @@ std::sort(v.begin(), v.end());
 // 自动用你的定制版，不是 std::swap 的通用拷贝版
 ```
 
-### 9.5 ADL 的代价：隐式 = 意外
+### 4.11 ADL 的代价：隐式 = 意外
 
 ADL 是隐式的，有时会意外找到你不想要的函数：
 
@@ -367,15 +254,15 @@ using std::swap;
 swap(a, b);   // using 让 std::swap 参与重载决议，明确优先级
 ```
 
-### 9.6 一句话
+### 4.12 一句话
 
 > **ADL 是 C++98 加入命名空间时打的向后兼容补丁，核心动机是让 `cout << x` 继续好用。本质是编译期自动把参数类型的命名空间加进查找范围，等价于帮你补命名空间前缀——无运行时开销，纯语法层规则。"类型和配套函数放同一命名空间"是使用 ADL 后形成的惯用法，不是它的哲学出发点。**
 
 ---
 
-## 10. 完美转发（Perfect Forwarding）
+## 5. 完美转发（Perfect Forwarding）
 
-### 10.1 问题：普通传参会丢失右值性
+### 5.1 问题：普通传参会丢失右值性
 
 ```cpp
 void target(int& x)  { std::cout << "左值\n"; }
@@ -391,7 +278,7 @@ wrapper(42);   // 传了右值，但 target 收到的是左值
 
 **根本原因**：一个值一旦有了名字（变量名），在函数体内就是**左值**，不管声明类型是不是 `&&`。
 
-### 10.2 解法：转发引用 + std::forward
+### 5.2 解法：转发引用 + std::forward
 
 ```cpp
 template<typename T>
@@ -413,7 +300,7 @@ wrapper(42);   // 42 是右值 → T=int  → forward 保持右值 → 调 targe
 
 **`std::forward<T>`**：根据 T 决定是否恢复右值——本质是一个有条件的 `static_cast<T&&>`。
 
-### 10.3 forward vs move
+### 5.3 forward vs move
 
 ```cpp
 std::move(x)          // 无条件把 x 变成右值，不管 x 原来是什么
@@ -422,9 +309,9 @@ std::forward<T>(x)    // 有条件：T 是右值引用类型时变右值，否�
 
 ---
 
-## 11. 可变参数模板（Variadic Templates）
+## 6. 可变参数模板（Variadic Templates）
 
-### 11.1 参数包是什么
+### 6.1 参数包是什么
 
 **参数包就是"一组类型/值的集合"**，大小在编译期由调用者决定。
 
@@ -438,7 +325,7 @@ void f(Args&&... args) {     // args：值包
 }
 ```
 
-### 11.2 展开：`...` 的作用
+### 6.2 展开：`...` 的作用
 
 包**不能直接用**，必须展开。`...` 放在含有包的表达式后面，意思是：
 
@@ -456,12 +343,12 @@ std::forward<int>(a1), std::forward<double>(a2), std::forward<const char*>(a3)
 `...` 放在哪，那个整体表达式就作为模式被展开：
 
 ```cpp
-args...            // → a1, a2, a3
-sizeof(Args)...    // → sizeof(T1), sizeof(T2), sizeof(T3)
+args...                      // → a1, a2, a3
+sizeof(Args)...              // → sizeof(T1), sizeof(T2), sizeof(T3)
 std::forward<Args>(args)...  // → forward<T1>(a1), forward<T2>(a2), ...
 ```
 
-### 11.3 多参数完美转发
+### 6.3 多参数完美转发
 
 ```cpp
 template<typename... Args>
@@ -470,7 +357,7 @@ void wrapper(Args&&... args) {
 }
 ```
 
-### 11.4 实战：emplace_back
+### 6.4 实战：emplace_back
 
 ```cpp
 // push_back：先构造临时对象，再移动进去（多一步）
@@ -486,7 +373,7 @@ void emplace_back(Args&&... args) {
 }
 ```
 
-### 11.5 实用工具
+### 6.5 实用工具
 
 **`sizeof...`**：获取参数包大小
 
@@ -514,21 +401,92 @@ auto sum(Args&&... args) {
 }
 ```
 
-### 11.6 一句话
+### 6.6 一句话
 
 > **参数包是"一组类型/值的集合"，`...` 放在含包的表达式后面就是展开——把那个表达式对每个元素重复一遍用逗号隔开，和手写 N 个参数等价，只是让编译器替你重复这件事。完美转发 = 转发引用（`T&&`）+ `std::forward<T>`，把参数的左值/右值性原封不动地传给下一个函数。**
 
+### 6.7 与 `initializer_list` 的对比
 
-一句话总结:你对「异常传播路径」的理解完全正确,但漏了「构造失败的对象其析构函数不被调用」这条规则;正因为这条规则,结果是资源泄漏,而不是残次品对象
-  在析构时出问题
+`{1, 2, 3}` 这种列表初始化用的是 `std::initializer_list<T>`。它和可变参数模板都"接收任意多个参数"，但底层机制截然相反——可比性恰恰在于它们的对立。
+
+| 维度 | `initializer_list<T>` | 可变参数模板 `Args...` |
+|------|----------------------|----------------------|
+| 元素类型 | **同质**：全是同一个 `T` | **异质**：每个参数类型可不同 |
+| 个数信息 | 运行期的 `size()` | 编译期的 `sizeof...(Args)` |
+| 本质 | 一个**对象**（轻量，指向只读数组） | 不是对象，是**编译期的类型/值序列** |
+| 元素访问 | 运行期遍历（`begin()`/`end()`） | 编译期展开（`...`）或递归 |
+| 完美转发 | **不行**（元素是 `const T&`，只读） | **可以**（`forward<Args>(args)...`） |
+
+```cpp
+// initializer_list：必须全是 int
+auto f(std::initializer_list<int> il);
+f({1, 2, 3});        // ✅
+f({1, 2.0, "hi"});   // ❌ 类型不统一，编译失败
+
+// 可变参数模板：什么都行
+template<typename... Args> void g(Args&&... args);
+g(1, 2.0, "hi");     // ✅ Args = {int, double, const char*}
+```
+
+#### 关键陷阱：`initializer_list` 的元素是只读的
+
+它背后是一个**编译器生成的临时 const 数组**，所以拿不到非 const 引用，**无法移动**：
+
+```cpp
+std::vector<std::unique_ptr<int>> v;
+
+// ❌ 编译失败：il 元素是 const，unique_ptr 不能拷贝
+// v = { std::make_unique<int>(1), std::make_unique<int>(2) };
+
+// ✅ 可变参数模板没这个限制，能逐个移动进去
+v.push_back(std::make_unique<int>(1));
+```
+
+这正是为什么 `emplace_back(Args&&...)` 用可变参数模板而不是 `initializer_list`——它要完美转发、要能移动。
+
+#### 二者是配合，不是竞争
+
+手写 `vector` 时各管各的：`il` 构造一次性给一串同类型值，`emplace_back` 转发任意构造参数。
+
+```cpp
+// 一次性给多个元素 → initializer_list（同质、只读够用）
+vector(std::initializer_list<T> il) {
+    AllocGuard g(alloc, il.size());
+    for (const T& x : il) { alloc.construct(g.buf + g.built, x); g.add(); }
+    g.release();
+    // ...
+}
+
+// 就地构造单个元素，转发任意构造参数 → 可变参数模板
+template<typename... Args>
+void emplace_back(Args&&... args) {
+    new(finish) T(std::forward<Args>(args)...);  // 这里 il 做不到
+    ++finish;
+}
+```
+
+#### 语言坑：`{}` 会"劫持"重载决议
+
+`initializer_list` 构造函数有**最高优先级**，花括号优先匹配它——`vector` 著名的歧义来源：
+
+```cpp
+std::vector<int> a(10, 5);   // 10 个 5      → 普通构造函数
+std::vector<int> b{10, 5};   // 元素 {10, 5} → initializer_list 抢走了
+```
+
+可变参数模板没有这种语法特权，纯靠普通的模板推导和重载决议。
+
+#### 一句话
+
+> `initializer_list` 是**运行期的同质只读序列**（本质是指向 const 数组的对象），适合"给我一串同类型的值"；可变参数模板是**编译期的异质类型序列**（本质是类型列表），适合"原样转发任意一组参数"。前者牺牲灵活性换来简洁的 `{...}` 语法，后者牺牲语法糖换来完美转发和类型多样性。需要移动/转发/多类型时只能用后者。
 
 ---
 
-## 12. 手写 `vector` 的异常安全与资源管理（来自 `Vector.h` 练习）
+## 7. 手写 `vector` 的异常安全与资源管理（来自 `Vector.h` 练习）
 
 围绕自己实现的 `KaKaRot::vector` 反复打磨出来的三组核心要点。
 
-### 12.1 分配器层：`construct`/`destroy` 与 RAII 回滚守卫
+### 7.1 分配器层：`construct`/`destroy` 与 RAII 回滚守卫
 
 #### `std::allocator::construct/destroy` 的标准变迁
 
@@ -580,7 +538,7 @@ start = g.buf; finish = g.buf + n; cap = g.buf + n;
 
 > **`add()` 记账，`~AllocGuard()` 在异常时按账本清理，C++ 的栈展开保证析构一定执行。** 这就是把裸指针"升级"成能自动清理的 RAII 对象。
 
-### 12.2 构造函数的异常语义（关键认知）
+#### 构造函数的异常语义（关键认知）
 
 > **构造函数抛异常 ⇒ 该对象被视为「从未构造成功」⇒ 它自己的析构函数绝不被调用；但已构造完成的成员/基类会被正常析构。**
 
@@ -598,7 +556,7 @@ struct Widget {
 
 - 成员 `start/finish/cap` 是**裸指针**，其"析构"是空操作 → 不会释放指向的内存。
 - 构造途中抛异常 + `~vector()` 不执行 → **纯内存泄漏**（不是"残次品对象析构时出错"）。
-- 标准为何这样设计：若强行调 `~vector()`，会对「只构造了一半、却被 `finish` 标记为全满」的内存做析构 → **对未初始化内存析构 = UB**。两害相权，标准选「不调析构」，代价是泄漏——而泄漏正好用 **12.1 的 RAII 守卫** 来堵。
+- 标准为何这样设计：若强行调 `~vector()`，会对「只构造了一半、却被 `finish` 标记为全满」的内存做析构 → **对未初始化内存析构 = UB**。两害相权，标准选「不调析构」，代价是泄漏——而泄漏正好用 **7.1 的 RAII 守卫** 来堵。
 
 常见误区纠正：
 
@@ -608,7 +566,7 @@ struct Widget {
 | 析构残次品时会出问题 | `~vector()` 根本不跑，谈不上析构出错 |
 | 成员也不管了 | 已构造完成的成员**会**被析构（只是裸指针清理不了内存） |
 
-### 12.3 拷贝控制：copy-and-swap
+### 7.3 拷贝控制：copy-and-swap
 
 #### 「先毁后建」的二次析构 UB
 
@@ -647,3 +605,18 @@ vector& operator=(vector&& rhs);      // 但与它共存会"重载二义"（实�
 - **结论**：采用「`const&` 版 copy-and-swap」+「专门的 `noexcept` 移动赋值」两个重载——既无二义，又保住 noexcept。
 
 > 一句话：copy-and-swap 用"先建副本、再交换、旧的随副本析构"的顺序，把异常风险挡在改动自身之前，天然获得强保证；对容器要单独保留 `noexcept` 移动赋值。
+
+### 7.4 接口设计原则：快的可以变慢，慢的无法变快
+
+```cpp
+// 无检查（快）→ 在它之上叠加有检查（慢）：✅ 可以
+T& at(size_t i) {
+    if (i >= size_) throw out_of_range{};
+    return (*this)[i];   // 复用无检查的 operator[]
+}
+
+// 有检查（慢）→ 想造出无检查（快）：❌ 做不到
+// at() 内部的 if 永远在跑，去不掉
+```
+
+> 设计原则：**把最精简、最快的版本做底层，把额外功能叠在上层**。
