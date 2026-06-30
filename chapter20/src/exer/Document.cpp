@@ -11,6 +11,7 @@
 #include "Document.h"
 #include <iostream>
 #include <algorithm>
+#include <iterator>
 #include <string>
 
 std::istream& operator>>(std::istream& is, Document& d)
@@ -69,3 +70,23 @@ Text_iterator find_txt(Text_iterator first, Text_iterator last, const std::strin
         first = ++p;                // look at the next character
     }
 }
+
+Text_iterator 
+find_and_replace(Text_iterator first, Text_iterator last, const std::string& find, const std::string& replace)
+{
+    Text_iterator it = find_txt(first, last, find);
+    if (it == last) { return it; }
+
+    Line& ln = *(it.ln);
+    Line::difference_type dis = std::distance(ln.begin(), it.pos);
+
+    Line new_line;
+    new_line.reserve(ln.size() - find.size() + replace.size())
+
+    std::copy(start, middle, std::back_inserter(vec));
+    std::copy(replace.cbegin(), replace.cend(), std::back_inserter(vec));
+    std::copy(middle, end, std::back_inserter(vec));
+    *(it.ln) = vec;
+    return it;
+}
+

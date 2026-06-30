@@ -3,6 +3,7 @@
 
 #include <list>
 #include <vector>
+#include <string>
 
 using Line = std::vector<char>; // a line is a vector of characters
 
@@ -19,6 +20,9 @@ public:
         { return ln==other.ln && pos==other.pos; }
     bool operator!=(const Text_iterator& other) const
         { return !(*this==other); }
+
+    friend Text_iterator 
+    find_and_replace(Text_iterator first, Text_iterator last, const std::string& find, const std::string& replace);
 };
 
 struct Document {
