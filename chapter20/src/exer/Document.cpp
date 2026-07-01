@@ -81,12 +81,12 @@ find_and_replace(Text_iterator first, Text_iterator last, const std::string& fin
     Line::difference_type dis = std::distance(ln.begin(), it.pos);
 
     Line new_line;
-    new_line.reserve(ln.size() - find.size() + replace.size())
+    new_line.reserve(ln.size() - find.size() + replace.size());
 
-    std::copy(start, middle, std::back_inserter(vec));
-    std::copy(replace.cbegin(), replace.cend(), std::back_inserter(vec));
-    std::copy(middle, end, std::back_inserter(vec));
-    *(it.ln) = vec;
-    return it;
+    std::copy(ln.begin(), it.pos, std::back_inserter(new_line));
+    std::copy(replace.cbegin(), replace.cend(), std::back_inserter(new_line));
+    std::copy(it.pos + find.size(), ln.end(), std::back_inserter(new_line));
+    ln = std::move(new_line);
+    return Text_iterator(it.ln, new_line.begin() + dis + replace.size());
 }
 
