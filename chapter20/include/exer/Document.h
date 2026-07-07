@@ -1,6 +1,8 @@
 #ifndef DOCUMENT_H
 #define DOCUMENT_H
 
+#include <cstddef>
+#include <istream>
 #include <list>
 #include <vector>
 #include <string>
@@ -13,6 +15,12 @@ class Text_iterator {
     Line::iterator pos;
 public:
     // start the iterator at line ll’s character position pp:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = char;
+    using difference_type = std::ptrdiff_t;
+    using pointer = char*;
+    using reference = char&;
+    
     Text_iterator(std::list<Line>::iterator ll, Line::iterator pp) : ln{ll}, pos{pp} { }
     char& operator*() { return *pos; }
     Text_iterator& operator++();
@@ -37,5 +45,20 @@ struct Document {
         return Text_iterator(last, (*last).end());
     }
 };
+
+
+std::istream& operator>>(std::istream& is, Document& d);
+void print(Document& d);
+void erase_line(Document& d, int n);
+bool match(Text_iterator first, Text_iterator last, const std::string& s);
+
+Text_iterator find_txt(Text_iterator first, Text_iterator last, const std::string& s);
+
+Text_iterator find_and_replace(Text_iterator first, Text_iterator last,
+                               const std::string& find, const std::string& replace);
+
+std::size_t count_char(Text_iterator first, Text_iterator last);
+std::size_t count_words_with_space(Text_iterator first, Text_iterator last);
+std::size_t count_words_with_character(Text_iterator first, Text_iterator last);
 
 #endif //DOCUMENT_H

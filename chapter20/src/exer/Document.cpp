@@ -9,6 +9,8 @@
  */
 
 #include "Document.h"
+#include <cctype>
+#include <cstddef>
 #include <iostream>
 #include <algorithm>
 #include <iterator>
@@ -90,3 +92,35 @@ find_and_replace(Text_iterator first, Text_iterator last, const std::string& fin
     return Text_iterator(it.ln, new_line.begin() + dis + replace.size());
 }
 
+std::size_t
+count_char(Text_iterator first, Text_iterator last)
+{
+    std::size_t size = 0;
+    for (auto it = first; it != last; ++it)
+        if (!std::isspace(*it))
+            ++size;
+
+    return size;
+}
+
+std::size_t
+count_words_with_space(Text_iterator first, Text_iterator last)
+{
+    std::size_t count = 0;
+    for (auto it = first; it != last; ++it)
+        if (std::isspace(*it))
+            ++count;
+
+    return count;
+}
+
+std::size_t
+count_words_with_character(Text_iterator first, Text_iterator last)
+{
+    std::size_t count = 0;
+    for (auto it = first; it != last; ++it)
+        if (std::isalpha(*it))
+            ++count;
+
+    return count;
+}
