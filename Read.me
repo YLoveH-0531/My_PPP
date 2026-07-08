@@ -1,3 +1,77 @@
+  VS Code 开发环境配置（WSL + Windows VS Code）
+
+  环境：WSL2 Ubuntu + Windows VS Code（Remote WSL 扩展）
+
+  ── 一、settings.json ──────────────────────────────────────
+  路径：C:\Users\<用户名>\AppData\Roaming\Code\User\settings.json
+  追加以下三行：
+
+    "C_Cpp.intelliSenseEngine": "disabled",   // 关闭 cpptools IntelliSense，让 clangd 接管
+    "editor.formatOnSave": true,              // 保存时自动 clang-format
+    "editor.snippetSuggestions": "top"        // snippet 补全排在最前
+
+  说明：clangd 和 ms-vscode.cpptools 同时装时会打架，禁用 cpptools 的
+        IntelliSense 让 clangd 负责补全/跳转，cpptools 只保留调试功能。
+
+  ── 二、snippets/cpp.json ──────────────────────────────────
+  路径：C:\Users\<用户名>\AppData\Roaming\Code\User\snippets\cpp.json
+  完整内容：
+
+    {
+        "Header Guard": {
+            "prefix": "hguard",
+            "body": [
+                "#ifndef ${TM_FILENAME_BASE/(.*)/${1:/upcase}/}_H",
+                "#define ${TM_FILENAME_BASE/(.*)/${1:/upcase}/}_H",
+                "",
+                "$0",
+                "",
+                "#endif // ${TM_FILENAME_BASE/(.*)/${1:/upcase}/}_H"
+            ]
+        },
+        "Pragma Once": {
+            "prefix": "po",
+            "body": [ "#pragma once", "", "$0" ]
+        },
+        "C++ Class": {
+            "prefix": "cls",
+            "body": [
+                "class ${1:ClassName} {",
+                "public:",
+                "\t${1:ClassName}();",
+                "\t~${1:ClassName}();",
+                "",
+                "private:",
+                "\t$0",
+                "};"
+            ]
+        },
+        "Range-based for loop": {
+            "prefix": "forr",
+            "body": [ "for (auto& ${1:item} : ${2:container}) {", "\t$0", "}" ]
+        }
+    }
+
+  ── 三、Snippet 使用方法 ────────────────────────────────────
+  在 .h / .cpp 文件里输入关键词，按 Tab 展开；没反应就先按 Ctrl+Space 触发补全。
+
+    hguard → #ifndef 头文件守护，文件名自动转大写
+    po     → #pragma once（推荐，更简洁）
+    cls    → class 骨架；输完类名后 Tab，三处构造/析构名同步修改
+    forr   → range-based for；Tab 在变量名 → 容器名 → 函数体间跳跃
+
+  ── 四、常用快捷键 ──────────────────────────────────────────
+    F2            重命名，所有引用同步修改
+    F12           跳转到定义
+    Alt+F12       悬浮预览定义，不跳走
+    Shift+F12     查看所有引用
+    Ctrl+Shift+Space  查看当前函数参数列表
+
+  ── 五、WSL 工具链（已装，家里新机需手动安装）──────────────
+    sudo apt install build-essential gdb clangd clang-format
+
+  ---
+
   基本原则
 
   - Drill 必做，Exercise 每章选 3-5 题

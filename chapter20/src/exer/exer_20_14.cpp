@@ -1,21 +1,20 @@
 /**
- * @file exer_20_12_13.cpp
+ * @file exer_20_14.cpp
  * @author KaKaRot
  * @brief
  * @version 0.1
- * @date 2026-07-07
+ * @date 2026-07-08
  *
  * @copyright Copyright (c) 2026
  */
 
-#include "exer_20_12_13.h"
+#include "exer_20_14.h"
 #include <cassert>
 #include <iostream>
 #include <string>
 
-// ── 辅助：把 list 内容打印成一行 ──────────────────────────────
 template<typename Elem>
-void print(const std::string& label, list<Elem>& l)
+void print(const std::string& label, slist<Elem>& l)
 {
     std::cout << "  " << label << ": [";
     for (auto it = l.begin(); it != l.end(); ++it) {
@@ -27,33 +26,29 @@ void print(const std::string& label, list<Elem>& l)
 }
 
 // ══════════════════════════════════════════════════════════════
-//  push_back / push_front / 迭代器顺序
+//  push_front / push_back / 迭代器顺序
 // ══════════════════════════════════════════════════════════════
 static void test_push_and_iterate()
 {
     std::cout << "── push / iterate ──\n";
 
-    list<int> l;
-    l.push_back(1);
-    l.push_back(2);
-    l.push_back(3);
+    slist<int> l;
+    l.push_back(1); l.push_back(2); l.push_back(3);
     print("push_back 1,2,3", l);
 
-    int expected[] = {1, 2, 3};
+    int exp[] = {1, 2, 3};
     int i = 0;
     for (auto it = l.begin(); it != l.end(); ++it, ++i)
-        assert(*it == expected[i]);
+        assert(*it == exp[i]);
     std::cout << "  [PASS] push_back 顺序正确\n";
 
-    list<int> l2;
-    l2.push_front(3);
-    l2.push_front(2);
-    l2.push_front(1);
+    slist<int> l2;
+    l2.push_front(3); l2.push_front(2); l2.push_front(1);
     print("push_front 3,2,1", l2);
 
     i = 0;
     for (auto it = l2.begin(); it != l2.end(); ++it, ++i)
-        assert(*it == expected[i]);
+        assert(*it == exp[i]);
     std::cout << "  [PASS] push_front 顺序正确\n";
 }
 
@@ -64,20 +59,16 @@ static void test_front_back()
 {
     std::cout << "── front / back ──\n";
 
-    list<int> l;
-    l.push_back(10);
-    l.push_back(20);
-    l.push_back(30);
+    slist<int> l;
+    l.push_back(10); l.push_back(20); l.push_back(30);
 
     assert(l.front() == 10);
     assert(l.back()  == 30);
     std::cout << "  [PASS] front=10, back=30\n";
 
-    // 修改 front/back
     l.front() = 100;
     l.back()  = 300;
-    assert(l.front() == 100);
-    assert(l.back()  == 300);
+    assert(l.front() == 100 && l.back() == 300);
     std::cout << "  [PASS] front/back 可写\n";
 }
 
@@ -88,7 +79,7 @@ static void test_pop()
 {
     std::cout << "── pop_front / pop_back ──\n";
 
-    list<int> l;
+    slist<int> l;
     l.push_back(1); l.push_back(2); l.push_back(3);
 
     l.pop_front();
@@ -99,88 +90,69 @@ static void test_pop()
     assert(l.back() == 2);
     std::cout << "  [PASS] pop_back  → back  变为 2\n";
 
-    l.pop_front();   // 列表变空
+    l.pop_front();
     assert(l.begin() == l.end());
     std::cout << "  [PASS] 弹完后 begin()==end()\n";
 }
 
 // ══════════════════════════════════════════════════════════════
-//  insert / erase
+//  insert_after / erase_after
 // ══════════════════════════════════════════════════════════════
 static void test_insert_erase()
 {
-    std::cout << "── insert / erase ──\n";
+    std::cout << "── insert_after / erase_after ──\n";
 
-    list<int> l;
+    slist<int> l;
     l.push_back(1); l.push_back(3);
 
-    // 在迭代器指向的节点前插入 2
-    auto it = l.begin(); ++it;          // 指向 3
-    l.insert(it, 2);
-    print("insert 2 between 1,3", l);
+    auto it = l.begin();           // 指向 1
+    l.insert_after(it, 2);         // 在 1 后插入 2 → 1,2,3
+    print("insert_after(1, 2)", l);
 
-    int expected[] = {1, 2, 3};
+    int exp[] = {1, 2, 3};
     int i = 0;
     for (auto p = l.begin(); p != l.end(); ++p, ++i)
-        assert(*p == expected[i]);
-    std::cout << "  [PASS] insert 后顺序 1,2,3\n";
+        assert(*p == exp[i]);
+    std::cout << "  [PASS] insert_after 后顺序 1,2,3\n";
 
-    // 删除中间节点 2
-    it = l.begin(); ++it;
-    l.erase(it);
-    print("erase 2", l);
+    it = l.begin();                // 指向 1
+    l.erase_after(it);             // 删 1 后的节点(2) → 1,3
+    print("erase_after(1)", l);
     assert(l.front() == 1 && l.back() == 3);
-    std::cout << "  [PASS] erase 后剩 1,3\n";
+    std::cout << "  [PASS] erase_after 后剩 1,3\n";
 }
 
 // ══════════════════════════════════════════════════════════════
-//  反向迭代（operator--）
+//  单元素边界
 // ══════════════════════════════════════════════════════════════
-static void test_reverse_iterate()
+static void test_single_element()
 {
-    std::cout << "── 反向迭代 ──\n";
+    std::cout << "── 单元素边界 ──\n";
 
-    list<int> l;
-    l.push_back(1); l.push_back(2); l.push_back(3);
+    slist<int> l;
+    l.push_back(42);
+    assert(l.front() == 42 && l.back() == 42);
+    std::cout << "  [PASS] 单元素 front==back==42\n";
 
-    int expected[] = {3, 2, 1};
-    int i = 0;
-    auto it = l.end();
-    while (it != l.begin()) {
-        --it;
-        assert(*it == expected[i++]);
-    }
-    std::cout << "  [PASS] 反向遍历顺序 3,2,1\n";
+    l.pop_back();
+    assert(l.begin() == l.end());
+    std::cout << "  [PASS] pop_back 后列表为空\n";
 }
 
 // ══════════════════════════════════════════════════════════════
-//  high()：找最大值迭代器
+//  string 类型
 // ══════════════════════════════════════════════════════════════
-static void test_high()
+static void test_string()
 {
-    std::cout << "── high() ──\n";
+    std::cout << "── string 类型 ──\n";
 
-    list<int> l;
-    l.push_back(3); l.push_back(1); l.push_back(4);
-    l.push_back(1); l.push_back(5); l.push_back(9);
-    l.push_back(2); l.push_back(6);
-
-    auto it = high(l.begin(), l.end());
-    assert(*it == 9);
-    std::cout << "  [PASS] high={3,1,4,1,5,9,2,6} → 9\n";
-
-    list<std::string> ls;
-    ls.push_back("banana");
-    ls.push_back("apple");
-    ls.push_back("cherry");
-    auto sit = high(ls.begin(), ls.end());
-    assert(*sit == "cherry");
-    std::cout << "  [PASS] high{banana,apple,cherry} → cherry\n";
+    slist<std::string> l;
+    l.push_back("hello");
+    l.push_back("world");
+    assert(l.front() == "hello" && l.back() == "world");
+    std::cout << "  [PASS] string push_back/front/back\n";
 }
 
-// ══════════════════════════════════════════════════════════════
-//  main
-// ══════════════════════════════════════════════════════════════
 int main()
 {
     test_push_and_iterate();
@@ -191,9 +163,9 @@ int main()
     std::cout << '\n';
     test_insert_erase();
     std::cout << '\n';
-    test_reverse_iterate();
+    test_single_element();
     std::cout << '\n';
-    test_high();
-    std::cout << "\n所有测试通过!\n";
+    test_string();
+    std::cout << "\n所有测试通过！\n";
     return 0;
 }
