@@ -67,7 +67,32 @@
     Shift+F12     查看所有引用
     Ctrl+Shift+Space  查看当前函数参数列表
 
-  ── 五、WSL 工具链（已装，家里新机需手动安装）──────────────
+  ── 五、.clang-format 关键配置 ─────────────────────────────
+  路径：/home/wjy/personal/CPlusPlus/My_PPP/.clang-format
+
+    BasedOnStyle: LLVM
+    IndentWidth: 4
+    ColumnLimit: 100
+  # BreakBeforeBraces: Allman              # 已禁用，{ 位置手动控制（见下方说明）
+    AlwaysBreakTemplateDeclarations: Yes   # template <T> 和 class/func 强制分两行
+    AllowShortFunctionsOnASingleLine: None # 禁止函数体压成一行
+
+  说明：
+    AlwaysBreakTemplateDeclarations: Yes 防止保存时 clang-format 把
+    template <typename T> class Pvector : private std::vector<T *>
+    压成一行；设为 Yes 后始终在 template 声明后换行。
+
+    AllowShortFunctionsOnASingleLine: None 防止 int main() { return 0; }
+    被压成一行，所有函数体都强制换行展开。
+
+    { 位置不让 clang-format 管：clang-format 无"保持原样"模式，
+    两种解法：
+      1. 代码局部：// clang-format off ... // clang-format on
+      2. VS Code 针对 C++ 关掉 formatOnSave（推荐）：
+         在 settings.json 追加：
+           "[cpp]": { "editor.formatOnSave": false }
+
+  ── 六、WSL 工具链（已装，家里新机需手动安装）──────────────
     sudo apt install build-essential gdb clangd clang-format
 
   ---

@@ -4,15 +4,23 @@
 #include <vector>
 
 template <typename T>
-class Pvector {
- public:
-  Pvector();
-  ~Pvector() {
-    for (auto p : v) delete p;
-  }
+class Pvector : private std::vector<T *> {
+  private:
+    using Base = std::vector<T *>;
 
- private:
-  std::vector<T*> v;
+  public:
+    using Base::begin;
+    using Base::empty;
+    using Base::end;
+    using Base::push_back;
+    using Base::size;
+    using Base::operator[];
+    using Base::reserve;
+    Pvector() = default;
+    ~Pvector() {
+        for (auto p : *this)
+            delete p;
+    }
 };
 
-#endif  // EXER_20_15_H
+#endif // EXER_20_15_H
