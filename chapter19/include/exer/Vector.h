@@ -2,12 +2,14 @@
 #define VECTOR_H
 
 #include <cstddef>
+#include <iterator>
 #include <initializer_list>
 #include <memory>
 #include <algorithm>
-#include <iterator>
+#include <iostream>
 #include <stdexcept>
 #include <utility>
+#include <type_traits>
 
 namespace KaKaRot{
 
@@ -49,6 +51,92 @@ class vector
     };
 
 public:
+    // ── range-checked 随机访问迭代器 ──────────────────────────────────────────
+    //   嵌套类模板：U = T 得到非 const 迭代器，U = const T 得到 const 迭代器（一套代码）。
+    //   状态是三指针 cur/beg/last(尾后)；每次访问都验证边界，越界抛异常。
+    //   注：reserve/搬移后 beg/last 变旧值 → 迭代器失效，与 std::vector 语义一致。
+    template <typename U>
+    class Checked_iter {
+        template <typename V> friend class Checked_iter;   // const/非const 互为友元(转换构造要读私有成员)
+    public:
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type        = typename std::remove_cv<U>::type;  // 去 cv：const 迭代器的 value_type 也应非 const
+        using difference_type   = std::ptrdiff_t;
+        using pointer           = U*;
+        using reference         = U&;
+
+        Checked_iter() noexcept : cur(nullptr), beg(nullptr), last(nullptr) {}
+        Checked_iter(U* p, U* b, U* e) noexcept : cur(p), beg(b), last(e) {}
+
+        // 非 const → const 的隐式转换：仅当 U 是 const 且 V 是它去掉 const 时启用
+        template <typename V, typename = typename std::enable_if<std::is_same<const V, U>::value>::type>
+        Checked_iter(const Checked_iter<V>& o) noexcept : cur(o.cur), beg(o.beg), last(o.last) {}
+
+        reference operator*()  const { check_deref();    return *cur; }
+        pointer   operator->() const { check_deref();    return  cur; }
+        reference operator[](difference_type n) const { check_index(n); return cur[n]; }
+
+        Checked_iter& operator++()    { check_move(1);  ++cur; return *this; }
+        Checked_iter& operator--()    { check_move(-1); --cur; return *this; }
+        Checked_iter  operator++(int) { Checked_iter t = *this; ++*this; return t; }
+        Checked_iter  operator--(int) { Checked_iter t = *this; --*this; return t; }
+
+        Checked_iter& operator+=(difference_type n) { check_move(n);  cur += n; return *this; }
+        Checked_iter& operator-=(difference_type n) { check_move(-n); cur -= n; return *this; }
+        Checked_iter  operator+(difference_type n) const { Checked_iter t = *this; return t += n; }
+        Checked_iter  operator-(difference_type n) const { Checked_iter t = *this; return t -= n; }
+        friend Checked_iter operator+(difference_type n, const Checked_iter& it) { return it + n; }
+
+        difference_type operator-(const Checked_iter& o) const { check_same(o); return cur - o.cur; }
+
+        bool operator==(const Checked_iter& o) const { check_same(o); return cur == o.cur; }
+        bool operator!=(const Checked_iter& o) const { return !(*this == o); }
+        bool operator< (const Checked_iter& o) const { check_same(o); return cur <  o.cur; }
+        bool operator> (const Checked_iter& o) const { return   o <  *this;  }
+        bool operator<=(const Checked_iter& o) const { return !(o <  *this); }
+        bool operator>=(const Checked_iter& o) const { return !(*this <  o);  }
+
+        pointer base() const noexcept { return cur; }     // 取回裸指针(给 emplace 等用)
+
+    private:
+        U* cur;    // 当前
+        U* beg;    // 下界(= 容器 start)
+        U* last;   // 尾后(= 容器 finish)
+
+        // 可解引用要求：beg <= cur < last
+        void check_deref() const {
+            if (cur < beg || cur >= last)
+                throw std::out_of_range("Checked_iter: dereference out of range");
+        }
+        // 下标要求：beg <= cur+n < last。用差值比较，避免形成越界指针(严格无 UB)
+        void check_index(difference_type n) const {
+            if (n < beg - cur || n >= last - cur)
+                throw std::out_of_range("Checked_iter: index out of range");
+        }
+        // 移动后位置允许落在 [beg, last](last 是合法尾后位置，可停不可解引用)
+        void check_move(difference_type n) const {
+            if (n < beg - cur || n > last - cur)
+                throw std::out_of_range("Checked_iter: iterator moved out of range");
+        }
+        // 跨容器的比较/相减无意义，直接拦掉
+        void check_same(const Checked_iter& o) const {
+            if (beg != o.beg || last != o.last)
+                throw std::invalid_argument("Checked_iter: iterators from different ranges");
+        }
+    };
+
+    using iterator               = Checked_iter<T>;
+    using const_iterator         = Checked_iter<const T>;
+    using reverse_iterator       = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    using size_type              = std::size_t;
+    using difference_type        = std::ptrdiff_t;
+    using value_type             = T;
+    using reference              = T&;
+    using const_reference        = const T&;
+    using pointer                = T*;
+    using const_pointer          = const T*;
+
     // constructors and copy-control
     vector() : start(nullptr), finish(nullptr), cap(nullptr) {}
     explicit vector(std::size_t count, const T& value = T{}) : start(nullptr), finish(nullptr), cap(nullptr)
@@ -170,25 +258,26 @@ public:
         alloc.construct(finish++, std::forward<Args>(args)...);
     }
     template<typename... Args>
-    T* emplace(T* pos, Args&&... args)
+    iterator emplace(iterator pos, Args&&... args)
     {
-        std::size_t offset = pos - start;
-        if (pos < start || pos > finish) { throw std::out_of_range("out of range!");}
+        T* p = pos.base();                              // 取回裸指针，内部逻辑照旧用裸指针
+        if (p < start || p > finish) { throw std::out_of_range("out of range!"); }
+        std::size_t offset = p - start;                 // 先查后减，避免野指针相减 UB
         // 在任何扩容/移位之前先把新值固化到 tmp：
         //   1) args 可能引用容器内元素，reserve/移位会令其失效 —— 先固化即可规避（别名安全）；
         //   2) tmp 构造若抛异常，此刻容器尚未改动，*this 完好（强异常保证）。
         T tmp(std::forward<Args>(args)...);
         if (size() == capacity()) { reserve(capacity() ? 2 *capacity() : 8); }
-        pos = start + offset;
-        if (pos == finish) {
+        T* q = start + offset;                          // reserve 可能搬移缓冲区，用 offset 重新定位
+        if (q == finish) {
             alloc.construct(finish, std::move(tmp));
         }else{
             alloc.construct(start + size(), std::move(*(start + size() -1)));
             for (std::size_t i = size() - 1; i > offset; i--) { start[i] = std::move(start[i - 1]); }
-            *pos = std::move(tmp);
+            *q = std::move(tmp);
         }
         finish++;
-        return pos;
+        return iterator(start + offset, start, finish); // 用最新边界重新构造检查版迭代器返回
     }
     void pop_back()
     {
@@ -262,19 +351,20 @@ public:
         cap    = g.buf + count;
     }
 
-    // iterator
-    T* begin() noexcept { return start; }
-    const T* begin() const noexcept { return start; }
-    T* end() noexcept { return finish; }
-    const T* end() const noexcept { return finish; }
-    const T* cbegin() const noexcept { return start; }
-    const T* cend() const noexcept { return finish; } 
-    std::reverse_iterator<T*>       rbegin()        { return  std::reverse_iterator<T*>(finish); }
-    std::reverse_iterator<const T*> rbegin() const  { return  std::reverse_iterator<const T*>(finish); }
-    std::reverse_iterator<T*>       rend()          { return std::reverse_iterator<T*>(start); }
-    std::reverse_iterator<const T*> rend() const    { return std::reverse_iterator<const T*>(start); }
-    std::reverse_iterator<const T*> crbegin() const { return  std::reverse_iterator<const T*>(finish); }
-    std::reverse_iterator<const T*> crend() const   { return std::reverse_iterator<const T*>(start); }
+    // iterator —— 边界统一是 [start, finish)，cur 分别取 start / finish
+    iterator       begin()  noexcept       { return iterator(start, start, finish); }
+    const_iterator begin()  const noexcept { return const_iterator(start, start, finish); }
+    iterator       end()    noexcept       { return iterator(finish, start, finish); }
+    const_iterator end()    const noexcept { return const_iterator(finish, start, finish); }
+    const_iterator cbegin() const noexcept { return const_iterator(start, start, finish); }
+    const_iterator cend()   const noexcept { return const_iterator(finish, start, finish); }
+    // 反向：用别名 + 检查版迭代器构造(rbegin 存 end、rend 存 begin —— reverse_iterator 的错位约定)
+    reverse_iterator       rbegin()        { return reverse_iterator(end()); }
+    const_reverse_iterator rbegin() const  { return const_reverse_iterator(end()); }
+    reverse_iterator       rend()          { return reverse_iterator(begin()); }
+    const_reverse_iterator rend() const    { return const_reverse_iterator(begin()); }
+    const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
+    const_reverse_iterator crend()   const { return const_reverse_iterator(cbegin()); }
 
 private:
     A  alloc;
@@ -306,6 +396,27 @@ template <typename T, typename A>
 void swap(vector<T, A>& lhs, vector<T, A>& rhs) noexcept
 {
     lhs.swap(rhs);
+}
+
+template <typename T, typename A>
+std::ostream& operator<<(std::ostream& os, const vector<T,A>& vec)
+{
+    for (const auto& Elem : vec) {
+        os << Elem << '\n';
+    }
+
+    return os;
+}
+
+template <typename T, typename A>
+std::istream& operator>>(std::istream& is, vector<T, A>& vec)
+{
+    std::istream_iterator<T> in(is), eof;
+    for (; in != eof; ++in) {
+        vec.push_back(*in);
+    }
+
+    return is;
 }
 
 }
