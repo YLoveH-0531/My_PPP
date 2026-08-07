@@ -63,8 +63,17 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `w` / `b` | 下一个/上一个单词 |
 | `0` / `$` | 行首/行尾 |
 | `gg` / `G` | 文件开头/结尾 |
-| `%` | 跳到匹配的 `(){}[]` |
+| `:` | 跳到某行 |
+| `Ctrl-e` / `Ctrl-y` | 向下/向上翻半屏 |
 | `Ctrl-d` / `Ctrl-u` | 向下/向上翻半屏 |
+| `Ctrl-i` / `Ctrl-o` | 用于跳转列表，跳进/跳回 | 触发大跳转的opeator
+                                                  - gg / G（跳到文件头/尾）
+                                                  - /,? 搜索后回车
+                                                  - :123 跳到某行
+                                                  - %（匹配括号跳转）
+                                                  - gd（跳到定义）
+                                                  - 打开新文件
+                                                  - Ctrl+]（跳到 tag） |
 
 数字前缀:`5j` 下移5行,`3w` 跳3个词——`[次数][命令]` 是通用语法。
 
@@ -75,6 +84,7 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `x` | 删光标处字符 |
 | `r字符` | 替换光标处一个字符 |
 | `dd` | 删整行 |
+| `cc` | 删整行, 并且进入到insert模式|
 | `yy` | 复制整行 |
 | `p` / `P` | 粘贴到下方/上方 |
 | `J` | 合并下一行到当前行末尾 |
@@ -84,7 +94,7 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 ### 第4层:动词+范围组合(vim 效率核心)
 
 语法:`[次数] 动词 范围`
-- 动词:`d`(删) / `c`(改,删完直接进 Insert) / `y`(复制)
+- 动词:`d`(删) / `c`(删完直接进 Insert) / `y`(复制)
 - 范围:`w`(词) / `$`(到行尾) / `i"` `i(` `i{`(引号/括号内部) / `ap`(段落/函数体)
 
 常用组合:
@@ -103,7 +113,14 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `*` | 搜索光标下的单词 |
 | `:%s/旧/新/g` | 整个文件替换 |
 | `:%s/旧/新/gc` | 替换前逐个确认 |
-
+  To substitute new for the first old in a line type    :s/old/new
+  To substitute new for all 'old's on a line type       :s/old/new/g
+  To substitute phrases between two line #'s type       :#,#s/old/new/g
+  To substitute all occurrences in the file type        :%s/old/new/g
+  To ask for confirmation each time add 'c'             :%s/old/new/gc
+| `/` | 搜索后回车 (正向匹配) |
+| `?` | 搜索后回车 (逆向匹配)|
+| `%` | 跳到匹配的 `(){}[]` | usage : Place the cursor on any (, [, or { in the line below marked, than type the  % character |
 ### 第6层:Visual 模式
 
 | 命令 | 作用 |
