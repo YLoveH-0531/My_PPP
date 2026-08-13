@@ -38,6 +38,10 @@ code .
 ```
 这样终端和 VSCodeVim 的键位保持一致,不用两边分别配置。
 
+> 验证缺口:`vim.vimrc.enable` 官方文档标注为 experimental,原话"only remaps are supported, and you may experience bugs"——好在我们用的正是 `nnoremap`,在官方支持范围内。但这个映射目前只在终端 vim 里用 `verbose nmap` 验证过,还没人在 VS Code 里实测过 `Ctrl+Q` 是否真的进 Block,第一次在 VS Code 里用之前自己测一次。
+
+**VS Code 原生能力复用**:VSCodeVim 默认就把几个 `g` 前缀键映射到 IDE 能力,不用额外配置——`gd` 跳转到定义(走 clangd/tsserver),`gh` 悬浮文档提示(等价于鼠标悬停),看完按 `Esc` 关掉。
+
 ## 2. 核心心智模型
 
 Vim 是三种模式的切换,不是"加了快捷键的编辑器":
@@ -109,6 +113,8 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 - `di"` = 删掉双引号里的内容
 - `dap` = 删掉整个函数体/段落
 - `cf;` = 改到下一个 `;` 为止
+- `ci<` / `di<` = 改模板/泛型尖括号内容(如 `std::vector<int>`、TS 的 `Record<string, any>`)
+- `ci[` / `di[` = 改数组/索引方括号内容
 
 不用死记组合,记住"动词+范围"拼装规则,遇到新场景现拼。
 
@@ -121,6 +127,9 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `:%s/旧/新/g` | 整个文件替换 |
 | `:%s/旧/新/gc` | 替换前逐个确认 |
 | `:g/pattern/normal 命令` | 对所有匹配行批量执行命令 |
+
+> VSCodeVim 官方文档承认 Ex 命令行(`:g`/`:normal` 等进阶用法)有"固有限制",遇到 `:g`+`normal` 组合行为异常,直接退回 VS Code 原生方案:`Ctrl+H` 正则替换,或 `Ctrl+Shift+L` 选中所有匹配项做多光标编辑。
+
   To substitute new for the first old in a line type    :s/old/new
   To substitute new for all 'old's on a line type       :s/old/new/g
   To substitute phrases between two line #'s type       :#,#s/old/new/g
