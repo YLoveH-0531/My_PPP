@@ -31,6 +31,13 @@ code .
 
 不受 Vim 插件影响、可以照常用的 VSCode 原生功能:`Ctrl+S` 保存、`Ctrl+A/C/V` 全选复制粘贴、`F5` 调试、CMake Tools 侧边栏、终端面板输入。
 
+**键位同步**:`Ctrl+V` 被 VS Code 保留做粘贴(如上),所以 Normal 模式下真正触发列块选中的键是 `Ctrl+Q`(终端 `~/.vimrc` 里 `nnoremap <C-q> <C-v>` 的映射)。在 VS Code `settings.json` 里加:
+```json
+"vim.vimrc.enable": true,
+"vim.vimrc.path": "~/.vimrc"
+```
+这样终端和 VSCodeVim 的键位保持一致,不用两边分别配置。
+
 ## 2. 核心心智模型
 
 Vim 是三种模式的切换,不是"加了快捷键的编辑器":
@@ -60,7 +67,7 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | 命令 | 作用 |
 |---|---|
 | `h j k l` | 左下上右 |
-| `w` / `b` | 下一个/上一个单词 |
+| `w`/ `e` / `b` | 下一个单词词头/下一个单词词尾/上一个单词头 |
 | `0` / `$` | 行首/行尾 |
 | `gg` / `G` | 文件开头/结尾 |
 | `:` | 跳到某行 |
@@ -78,22 +85,22 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 数字前缀:`5j` 下移5行,`3w` 跳3个词——`[次数][命令]` 是通用语法。
 
 ### 第3层:基础编辑
-
+[基础操作]
 | 命令 | 作用 |
 |---|---|
-| `x` | 删光标处字符 |
-| `r字符` | 替换光标处一个字符 |
-| `dd` | 删整行 |
-| `cc` | 删整行, 并且进入到insert模式|
-| `yy` | 复制整行 |
-| `p` / `P` | 粘贴到下方/上方 |
-| `J` | 合并下一行到当前行末尾 |
-| `u` / `Ctrl-r` | 撤销/重做 |
-| `.` | 重复上一个操作(改一处后其他类似处一个 `.` 搞定) |
+|  `x`  | 删光标处字符 |
+|  `r`  | 替换光标处一个字符 |
+|  `R`  | 替换光标处连续几个字符 |
+|  `dd` | 删整行 |
+|  `cc` | 删整行, 并且进入到insert模式|
+|  `yy` | 复制整行 |
+|  `p` / `P` | 粘贴到下方/上方 |
+|  `J` | 合并下一行到当前行末尾 |
+|  `u` / `Ctrl-r` | 撤销/重做 |
+|  `.` | 重复上一个操作(改一处后其他类似处一个 `.` 搞定) |
 
-### 第4层:动词+范围组合(vim 效率核心)
-
-语法:`[次数] 动词 范围`
+[进阶操作]
+语法:`[number] operator [number]  motion`
 - 动词:`d`(删) / `c`(删完直接进 Insert) / `y`(复制)
 - 范围:`w`(词) / `$`(到行尾) / `i"` `i(` `i{`(引号/括号内部) / `ap`(段落/函数体)
 
@@ -105,7 +112,7 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 
 不用死记组合,记住"动词+范围"拼装规则,遇到新场景现拼。
 
-### 第5层:搜索与替换
+### 第4层:搜索与替换
 
 | 命令 | 作用 |
 |---|---|
@@ -113,6 +120,7 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `*` | 搜索光标下的单词 |
 | `:%s/旧/新/g` | 整个文件替换 |
 | `:%s/旧/新/gc` | 替换前逐个确认 |
+| `:g/pattern/normal 命令` | 对所有匹配行批量执行命令 |
   To substitute new for the first old in a line type    :s/old/new
   To substitute new for all 'old's on a line type       :s/old/new/g
   To substitute phrases between two line #'s type       :#,#s/old/new/g
@@ -121,20 +129,41 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `/` | 搜索后回车 (正向匹配) |
 | `?` | 搜索后回车 (逆向匹配)|
 | `%` | 跳到匹配的 `(){}[]` | usage : Place the cursor on any (, [, or { in the line below marked, than type the  % character |
-### 第6层:Visual 模式
+ eg: how to find some contexts that constist of a few words?
+     1.press v enter visual mode
+     2.select the contents you want to search and press y to copy
+     3.press / to ready to search
+     4.press Ctrl + r to tell vim ready copy some thing from register.
+     5.press " to copy contents form default register(step 2 did)
+     6.press enter to serach.
+
+### 第5层:Visual 模式
 
 | 命令 | 作用 |
 |---|---|
 | `v` | 字符级选中 |
 | `V` | 行级选中 |
-| `Ctrl-v` | 列(块)选中 |
+| `Ctrl-v`(此环境下已重映射为 `Ctrl-q`,见第1节) | 列(块)选中 |
 | 选中后 `d`/`y`/`c` | 删/复制/改选中内容 |
 
-`Ctrl-v` 场景:多行变量声明前批量加 `static`,或多行行尾批量加 `;`——选中列,`I` 插入/`A` 追加,`Esc` 应用到所有行。
+`Ctrl-v`/`Ctrl-q` 场景:多行变量声明前批量加 `static`,或多行行尾批量加 `;`——选中列,`I` 插入/`A` 追加,`Esc` 应用到所有行。
+
+**陷阱**:退出 Insert 必须按真正的 `Esc`,按 `Ctrl+C` 只会改第一行,不会广播到其他选中行。
 
 `v%` 组合:光标停在 `{` 上输入 `v%`,选中从这个 `{` 到匹配 `}` 之间整块内容,后接 `d`/`y`/`>` 操作整块代码。
 
-### 第7层:宏(重复性操作自动化)
+### 第6层:在vim中使用 shell command.
+|  命令  |  作用  |
+|-------|-------|
+| `:!command` | 执行shell command |
+   !ls            shows a directory listing
+   !rm filename   removes file FILENAME
+| `:w filename`  | writes the current Vim file to disk with name FILENAME |
+| `:r filename`  | retrieves disk file FILENAME and puts it below the cursor position |
+| `:r !command`  | 回放5次reads the output of the dir command and puts it below the cursor position |
+
+
+### 第7层:宏(重复性操作自动化):
 
 | 命令 | 作用 |
 |---|---|
@@ -145,6 +174,8 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 
 典型场景:批量把多行测试数据从一种格式改成另一种格式,录一次后面用 `@@` 批量搞定。
 
+**注意**:VSCodeVim 的宏/Ex 替换偶尔跟原生 vim 行为不完全一致,大批量重放前先用 2-3 行小范围验证。
+
 ### 第8层:标记与跳转历史
 
 | 命令 | 作用 |
@@ -152,6 +183,16 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `ma` | 在当前位置打标记 a |
 | `` `a `` | 跳回标记 a |
 | `Ctrl-o` / `Ctrl-i` | 跳转历史后退/前进 |
+
+### 第9层:set command
+:set nu -- display line number
+:set nonu -- not display line number
+:set hls -- highlight all matching phrases
+:set nohls -- not highlight all matching phrases
+:set ic -- ignore upper/lower case when searching 
+:set noic -- not ignore upper/lower case when searching
+:set is -- show partial matches for a search phrase 
+:set nois -- not show partial matches for a search phrase 
 
 ## 4. `%` 命令详解(以 chapter20/src/exer/exer_20_2.cpp 为例)
 
