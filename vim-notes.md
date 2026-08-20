@@ -53,7 +53,7 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 唯一纪律:改完字立刻 `Esc` 回 Normal 模式,效率来自"待在 Normal 模式里发号施令"。
 
 ## 3. 分层命令参考(按学习顺序排列,不要跳级)
-
+## Normal mode ##
 ### 第1层:进出 Insert 模式
 
 | 命令 | 作用 |
@@ -101,11 +101,12 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 |  `p` / `P` | 粘贴到下方/上方 |
 |  `J` | 合并下一行到当前行末尾 |
 |  `u` / `Ctrl-r` | 撤销/重做 |
+|  `~`  | 切换光标处字符大小写,光标右移(可加count,如`3~`) |
 |  `.` | 重复上一个操作(改一处后其他类似处一个 `.` 搞定) |
 
 [进阶操作]
 语法:`[number] operator [number]  motion`
-- 动词:`d`(删) / `c`(删完直接进 Insert) / `y`(复制)
+- 动词:`d`(删) / `c`(删完直接进 Insert) / `y`(复制) / `gu`(变小写) / `gU`(变大写) / `g~`(切换大小写) / `>`(右移缩进) / `<`(左移缩进) / `=`(自动缩进) / `!`(外部命令过滤,见第6层)
 - 范围:`w`(词) / `$`(到行尾) / `i"` `i(` `i{`(引号/括号内部) / `ap`(段落/函数体)
 
 常用组合:
@@ -115,6 +116,11 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 - `cf;` = 改到下一个 `;` 为止
 - `ci<` / `di<` = 改模板/泛型尖括号内容(如 `std::vector<int>`、TS 的 `Record<string, any>`)
 - `ci[` / `di[` = 改数组/索引方括号内容
+- `guiw` / `gUiw` / `g~iw` = 光标下单词变小写/大写/大小写互换
+- `>>` / `<<` / `==` = 当前行右移/左移缩进 / 按文件类型规则自动重新缩进
+- 可视模式选中后直接按 `u`/`U`/`~`/`>`/`<`/`=` 也能对选区生效,不用记 operator+motion
+
+**陷阱**:`u`/`U`/`~` 在 Normal 模式不是变大小写——`u`=撤销、`U`=恢复当前行、`~`=光标处单字符翻转大小写(可加count,如`3~`)。真正"选中文字变大小写"有两条路:Visual 模式选中后直接按 `u`(小写)/`U`(大写)/`~`(互换);或 operator 版 `gu`/`gU`/`g~` + motion(如`guiw`),同 d/c/y 一套语法。
 
 不用死记组合,记住"动词+范围"拼装规则,遇到新场景现拼。
 
@@ -167,6 +173,10 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `:!command` | 执行shell command |
    !ls            shows a directory listing
    !rm filename   removes file FILENAME
+| `:'<,'>!command` | 可视模式选中后过滤:选中的行丢给外部命令处理,再用输出替换回选区 |
+   :'<,'>!sort       选中行排序
+   :'<,'>!sort -r    选中行逆序排序
+   :'<,'>!nl         选中行前加行号(nl = number lines)
 | `:w filename`  | writes the current Vim file to disk with name FILENAME |
 | `:r filename`  | retrieves disk file FILENAME and puts it below the cursor position |
 | `:r !command`  | 回放5次reads the output of the dir command and puts it below the cursor position |
@@ -202,6 +212,27 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 :set noic -- not ignore upper/lower case when searching
 :set is -- show partial matches for a search phrase 
 :set nois -- not show partial matches for a search phrase 
+
+## insert mode ##
+1. Keystrokes               Effect
+   ----------------------------------------------------------------------------------
+   | <C-h>                   Delete back one character (backspace)                  |
+   | <C-w>                   Delete back one word                                   |
+   | <C-u>                   Delete back to start of line                           |
+   ----------------------------------------------------------------------------------
+   | <Esc>                   Switch to Normal mode                                  |
+   | <C-[>                   Switch to Normal mode                                  |
+   | <C-o>                   Switch to Insert Normal mode                           |
+   ----------------------------------------------------------------------------------
+   | <C-v>{123}              Insert character by decimal code                       |
+   | <C-v>u{1234}            Insert character by hexadecimal code                   |
+   | <C-v>{nondigit}         Insert nondigit literally                              |
+   | <C-k>{char1}{char2}     Insert character represented by {char1}{char2} digraph |
+   ----------------------------------------------------------------------------------
+   | <C-r>{register}         Insert the contents of register {register}             |
+   | <C-r><C-p>{register}    Insert the contents of register {register},            |
+   |                         fixing the indentation to match the current line       |
+   ----------------------------------------------------------------------------------
 
 ## 4. `%` 命令详解(以 chapter20/src/exer/exer_20_2.cpp 为例)
 

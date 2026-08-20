@@ -8,10 +8,12 @@
 
 - VS Code 装 `vscodevim.vim` 插件，WSL Remote 方式打开项目，CMake Tools / clangd / cppdbg 不受影响
 - `~/.vimrc`：`nnoremap <C-q> <C-v>`（Ctrl+V 被终端 / VS Code 占用做粘贴，Block 选中改用 Ctrl+Q）
-- `~/.zshrc`：`stty -ixon`（释放 Ctrl+Q）
-- VS Code `settings.json`：`"vim.vimrc.enable": true`、`"vim.vimrc.path": "~/.vimrc"`，终端与 VS Code 键位保持一致
+- `~/.zshrc`：`[[ -t 0 ]] && stty -ixon`（释放 Ctrl+Q；2026-08-14 加了 `[[ -t 0 ]]` 判断，避免非 TTY 场景——比如 VS Code 探测 shell、脚本化调用——报 `Inappropriate ioctl for device`）
+- VS Code `settings.json`：`"vim.vimrc.enable": true`、`"vim.vimrc.path": "~/.vimrc"`，终端与 VS Code 键位保持一致；另外加了 `"vim.number": true`、`"vim.relativenumber": true`（混合行号，跟 vimrc 无关，是 settings.json 直接管的）
 
 验证：`.cpp` 文件里 Normal 模式按 `Ctrl+Q` → 状态栏出现 `-- VISUAL BLOCK --`。
+
+> 2026-08-14 二次核实：读了本机装的 `vscodevim.vim` 扩展源码（`out/extension.js`），确认 vimrc 加载器**只解析 remap 相关的正则**（`nnoremap`/`inoremap`/`unmap` 等）和 `source` 指令，没有任何代码路径解析 `set` 命令——跟 [vim-notes.md](./vim-notes.md) 第41行"验证缺口"那条判断完全吻合，而且是设计上如此，不是"偶尔报bug"。结论：以后任何 `set xxx` 类配置都不要往 `~/.vimrc` 里加，直接写 VS Code `settings.json` 对应的 `vim.xxx` 项（上面行号那条就是例子）。
 
 ## 六周节奏
 
@@ -22,6 +24,43 @@
 | 1–2 | Modes（模式与操作方式）+ Motions（行内/行间导航） | `f;`/`t=`/`;` 行内查找；相对行号 `Nj`/`Nk`；`cw` + `.` 重复 | 第 1–3 层 |
 | 3–4 | Visual Mode + 文本对象 | `ci(`/`di(` 改参数列表；`ci{`/`vi{` 重写函数体；`ci"`/`ci'` 改字符串/`#include` 路径；`ci<` 改模板/泛型（`std::vector<int>`、TS `Record<string, any>`）；`ci[` 改数组方括号 | 第 3、5 层 |
 | 5–6 | Registers（复制粘贴/宏）+ Patterns（搜索/替换/global 命令） | `qa...q` 录宏 + `N@a` 重放；`:%s/old/new/g`；`:g/pattern/normal ...` | 第 4、7、8 层 |
+
+### 补充：按《Practical Vim》原书章节/Tip 序号的精细对照表
+
+> 两张表选一张跟，别同时追进度——这张只是配合实体书页码/Tip 序号查进度用。
+
+#### 第1周（对应上表 1–2周）
+- **章节**：Ch1 The Vim Way + Ch2-5（Normal/Insert/Visual/Command-Line Mode）
+- **Tip**：1–36
+- 全书地基，逐条手敲验证
+
+#### 第2周（对应上表 1–2周）
+- **章节**：Ch6-7（多文件管理）+ Ch8（Motions）
+- **Tip**：37–55
+- Ch6-7 只泛读——VS Code 的 `Ctrl+P`/标签页已覆盖
+- Ch8 是全书 ROI 最高的一章（text object/`f`/`t`/`%`），多留时间
+
+#### 第3周（对应上表 3–4周）
+- **章节**：Ch9（Jumps）+ Ch10-11（Copy&Paste/Macros）
+- **Tip**：56–72
+- 宏拿真实重复性改动练手（批量加头文件守卫、snake_case→camelCase 字段转换），别只敲书里示例
+
+#### 第4周（对应上表 3–4周/5–6周过渡）
+- **章节**：Ch12-13（正则匹配/Search）
+- **Tip**：73–87
+- 括号捕获组 `\(...\)` 放心练
+- **跳过 `\v`(very magic)、`\zs`/`\ze`**——已用扩展源码 + GitHub issue（[#3073](https://github.com/VSCodeVim/Vim/issues/3073)、[#3996](https://github.com/VSCodeVim/Vim/issues/3996)、[#4018](https://github.com/VSCodeVim/Vim/issues/4018)）确认 VSCodeVim 未实现/有已知 bug
+
+#### 第5周（对应上表 5–6周）
+- **章节**：Ch14-15（替换/Global）+ Ch16-20（工具链）
+- **Tip**：88–123
+- Ch14 认真练
+- Ch15 简单 `:g/pat/d` 没问题；复杂 `:g+normal+宏` 组合先在草稿 buffer 小范围试（参考本文档"环境"一节 + vim-notes.md 第4层的既有提醒）
+- Ch16-20（ctags/quickfix/grep/自动补全/拼写检查）只泛读，功能基本被 VS Code 的 LSP 跳转/Problems 面板/全局搜索取代
+
+#### 第6周（收口）
+- **章节**：Ch21 + 附录 A1（vimrc 定制）
+- 附录 A1 只对 remap 有效，跟本文档"环境"一节 2026-08-14 的核实结论一致——`set` 类配置认准 settings.json
 
 ## 学习资源怎么用
 
