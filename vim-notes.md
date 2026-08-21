@@ -152,21 +152,6 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
      5.press " to copy contents form default register(step 2 did)
      6.press enter to serach.
 
-### 第5层:Visual 模式
-
-| 命令 | 作用 |
-|---|---|
-| `v` | 字符级选中 |
-| `V` | 行级选中 |
-| `Ctrl-v`(此环境下已重映射为 `Ctrl-q`,见第1节) | 列(块)选中 |
-| 选中后 `d`/`y`/`c` | 删/复制/改选中内容 |
-
-`Ctrl-v`/`Ctrl-q` 场景:多行变量声明前批量加 `static`,或多行行尾批量加 `;`——选中列,`I` 插入/`A` 追加,`Esc` 应用到所有行。
-
-**陷阱**:退出 Insert 必须按真正的 `Esc`,按 `Ctrl+C` 只会改第一行,不会广播到其他选中行。
-
-`v%` 组合:光标停在 `{` 上输入 `v%`,选中从这个 `{` 到匹配 `}` 之间整块内容,后接 `d`/`y`/`>` 操作整块代码。
-
 ### 第6层:在vim中使用 shell command.
 |  命令  |  作用  |
 |-------|-------|
@@ -214,7 +199,8 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 :set nois -- not show partial matches for a search phrase 
 
 ## insert mode ##
-1. Keystrokes               Effect
+1. Keystrokes command. 
+   Keystrokes               Effect
    ----------------------------------------------------------------------------------
    | <C-h>                   Delete back one character (backspace)                  |
    | <C-w>                   Delete back one word                                   |
@@ -234,23 +220,34 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
    |                         fixing the indentation to match the current line       |
    ----------------------------------------------------------------------------------
 
-## 4. `%` 命令详解(以 chapter20/src/exer/exer_20_2.cpp 为例)
+## visual mode ##
+1. Keystrokes command. 
+   Keystrokes               Effect
+   ----------------------------------------------------------------------------------
+   | v 		                   Enable character-wise Visual mode                      |
+   | V 		                   Enable line-wise Visual mode                           |
+   | <C-v>	                 Enable block-wise Visual mode                          | 
+   | gv		                   Reselect the last visual selection                     |      
+   | o                       Go to other end of highlighted text                    |      
+   ----------------------------------------------------------------------------------
 
-```cpp
-22  double* high(const double* first, const double* last)
-23  {
-24      double* result = nullptr;
-...
-26      for (int i = 0; i < last - first; i++)
-27      {
-28          if (result == nullptr || first[i] > *result)
-29          {
-30              result = const_cast<double*>(&first[i]);
-31          }
-32      }
-33      return result;
-34  }
-```
+2. Some use rules
+`Ctrl-v`/`Ctrl-q` 场景:多行变量声明前批量加 `static`,或多行行尾批量加 `;`——选中列,`I` 插入/`A` 追加,`Esc` 应用到所有行。
+
+## 4. `%` 命令详解(以 chapter20/src/exer/exer_20_2.cpp 为例)
+double* high(const double* first, const double* last)
+{
+    double* result = nullptr;
+
+    for (int i = 0; i < last - first; i++)
+    {
+        if (result == nullptr || first[i] > *result)
+        {
+            result = const_cast<double*>(&first[i]);
+        }
+    }
+    return result;
+}
 
 **常见使用场景**
 1. 校验函数/循环的作用域边界——光标放 `{` 上按 `%`,确认这对括号真正管辖到哪结束
