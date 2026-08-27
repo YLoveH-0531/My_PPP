@@ -44,7 +44,7 @@ code .
 
 ## 2. 核心心智模型
 
-Vim 是三种模式的切换,不是"加了快捷键的编辑器":
+vim 是三种模式的切换,不是"加了快捷键的编辑器":
 
 - **Normal 模式**(默认,`Esc` 回到这里):发命令,不打字
 - **Insert 模式**(`i`/`a`/`o` 等进入):正常打字
@@ -126,13 +126,13 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 
 ### 第4层:搜索与替换
 
-| 命令 | 作用 |
-|---|---|
-| `/关键词` + `Enter` | 向下搜索,`n`/`N` 跳下一个/上一个 |
-| `*` | 搜索光标下的单词 |
-| `:%s/旧/新/g` | 整个文件替换 |
-| `:%s/旧/新/gc` | 替换前逐个确认 |
-| `:g/pattern/normal 命令` | 对所有匹配行批量执行命令 |
+| 命令                     | 作用                             |
+|--------------------------|----------------------------------|
+| `/关键词` + `ENTER`      | 向下搜索,`N`/`N` 跳下一个/上一个 |
+| `*`                      | 搜索光标下的单词                 |
+| `:%S/旧/新/G`            | 整个文件替换                     |
+| `:%S/旧/新/GC`           | 替换前逐个确认                   |
+| `:G/PATTERN/NORMAL 命令` | 对所有匹配行批量执行命令         |
 
 > VSCodeVim 官方文档承认 Ex 命令行(`:g`/`:normal` 等进阶用法)有"固有限制",遇到 `:g`+`normal` 组合行为异常,直接退回 VS Code 原生方案:`Ctrl+H` 正则替换,或 `Ctrl+Shift+L` 选中所有匹配项做多光标编辑。
 
@@ -153,8 +153,8 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
      6.press enter to serach.
 
 ### 第6层:在vim中使用 shell command.
-|  命令  |  作用  |
-|-------|-------|
+| 命令        | 作用              |
+|-------------|-------------------|
 | `:!command` | 执行shell command |
    !ls            shows a directory listing
    !rm filename   removes file FILENAME
@@ -169,12 +169,12 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 
 ### 第7层:宏(重复性操作自动化):
 
-| 命令 | 作用 |
-|---|---|
+| 命令         | 作用                      |
+|--------------|---------------------------|
 | `qa` ... `q` | 录制到寄存器 a / 停止录制 |
-| `@a` | 回放寄存器 a |
-| `@@` | 重复上一次回放的宏 |
-| `5@a` | 回放5次 |
+| `@a`         | 回放寄存器 a              |
+| `@@`         | 重复上一次回放的宏        |
+| `5@a`        | 回放5次                   |
 
 典型场景:批量把多行测试数据从一种格式改成另一种格式,录一次后面用 `@@` 批量搞定。
 
@@ -224,11 +224,33 @@ Vim 是三种模式的切换,不是"加了快捷键的编辑器":
 1. Keystrokes command. 
    Keystrokes               Effect
    ----------------------------------------------------------------------------------
-   | v 		                   Enable character-wise Visual mode                      |
-   | V 		                   Enable line-wise Visual mode                           |
+   | v 		                 Enable character-wise Visual mode                      |
+   | V 		                 Enable line-wise Visual mode                           |
    | <C-v>	                 Enable block-wise Visual mode                          | 
-   | gv		                   Reselect the last visual selection                     |      
+   | gv		                 Reselect the last visual selection                     |      
    | o                       Go to other end of highlighted text                    |      
+   ----------------------------------------------------------------------------------
+
+## command line mode ##
+1. Keystrokes command. 
+   Keystrokes               Effect
+   ----------------------------------------------------------------------------------
+   | <C-:[range]delete [x]                   Delete back one character (backspace)                  |
+   | <C-w>                   Delete back one word                                   |
+   | <C-u>                   Delete back to start of line                           |
+   ----------------------------------------------------------------------------------
+   | <Esc>                   Switch to Normal mode                                  |
+   | <C-[>                   Switch to Normal mode                                  |
+   | <C-o>                   Switch to Insert Normal mode                           |
+   ----------------------------------------------------------------------------------
+   | <C-v>{123}              Insert character by decimal code                       |
+   | <C-v>u{1234}            Insert character by hexadecimal code                   |
+   | <C-v>{nondigit}         Insert nondigit literally                              |
+   | <C-k>{char1}{char2}     Insert character represented by {char1}{char2} digraph |
+   ----------------------------------------------------------------------------------
+   | <C-r>{register}         Insert the contents of register {register}             |
+   | <C-r><C-p>{register}    Insert the contents of register {register},            |
+   |                         fixing the indentation to match the current line       |
    ----------------------------------------------------------------------------------
 
 2. Some use rules
