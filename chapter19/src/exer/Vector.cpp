@@ -244,7 +244,7 @@ void test_emplace_back() {
 void test_emplace() {
     std::cout << "[Test 11] emplace\n";
     vector<int> v{1, 2, 4, 5};
-    int* pos = v.emplace(v.begin() + 2, 3);     // 中间插入 3 -> {1,2,3,4,5}
+    auto pos = v.emplace(v.begin() + 2, 3);     // 中间插入 3 -> {1,2,3,4,5}
     check(v.size() == 5,                "中间插入后 size=5");
     check(*pos == 3,                    "返回指向新元素的指针");
     check(v[0]==1 && v[1]==2 && v[2]==3 && v[3]==4 && v[4]==5, "中间插入顺序正确");
@@ -254,7 +254,7 @@ void test_emplace() {
     check(v[0] == 0 && v[1] == 1, "头部插入");
 
     // 尾部插入（pos==finish，等价 push_back）
-    int* tail = v.emplace(v.end(), 99);
+    auto tail = v.emplace(v.end(), 99);
     check(*tail == 99 && v.back() == 99, "尾部插入");
 
     // 触发扩容的插入仍正确
