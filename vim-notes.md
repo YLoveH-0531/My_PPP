@@ -75,6 +75,8 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `0` / `$` | 行首/行尾 |
 | `gg` / `G` | 文件开头/结尾 |
 | `:` | 跳到某行 |
+| `num|` | 跳到某列 |
+| `^` | 跳第一个非空白字符 |
 | `Ctrl-e` / `Ctrl-y` | 向下/向上翻半屏 |
 | `Ctrl-d` / `Ctrl-u` | 向下/向上翻半屏 |
 | `Ctrl-i` / `Ctrl-o` | 用于跳转列表，跳进/跳回 | 触发大跳转的opeator
@@ -143,6 +145,26 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
   To ask for confirmation each time add 'c'             :%s/old/new/gc
 | `/` | 搜索后回车 (正向匹配) |
 | `?` | 搜索后回车 (逆向匹配)|
+  ** some egs,
+   1. Search offset 专题:`/pattern/offset<CR>`(与 `?` 对称)
+
+   触发方式:直接按 `/` 或 `?`,不是 `:` 开头的Ex命令,但底层同样会短暂进入 Command-line 模式接收输入。
+
+   offset 写法:
+
+   | 类型 | 写法 | 落点 | 动作类型(配合operator时) |
+   |---|---|---|---|
+   | 不写 / `s`或`b` | `/pat/s`、`/pat/s+n`、`/pat/s-n` | 匹配开头(±n) | exclusive(排他,落点字符不算入) |
+   | `e` | `/pat/e`、`/pat/e+n`、`/pat/e-n` | 匹配末尾(±n) | inclusive(包含,落点字符算入) |
+   | 纯数字/`+n`/`-n` | `/pat/+2` | 匹配所在行的上/下第n行 | linewise(整行处理) |
+
+   核心记忆:`e`系≈`f`(inclusive),`s`/`b`系≈`t`(exclusive)——跟第2层已学的f/t是同一套包含/排他逻辑,只是从单字符扩展到一次搜索匹配。
+
+   三种用法:
+   1. 单独按`/`/`?`:纯跳转光标
+   2. 当operator的motion:`d/pattern/e<CR>`
+   3. 当Ex range地址(只支持行级offset):`:1,/pattern/+2d`
+
 | `%` | 跳到匹配的 `(){}[]` | usage : Place the cursor on any (, [, or { in the line below marked, than type the  % character |
  eg: how to find some contexts that constist of a few words?
      1.press v enter visual mode
@@ -152,22 +174,7 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
      5.press " to copy contents form default register(step 2 did)
      6.press enter to serach.
 
-### 第6层:在vim中使用 shell command.
-| 命令        | 作用              |
-|-------------|-------------------|
-| `:!command` | 执行shell command |
-   !ls            shows a directory listing
-   !rm filename   removes file FILENAME
-| `:'<,'>!command` | 可视模式选中后过滤:选中的行丢给外部命令处理,再用输出替换回选区 |
-   :'<,'>!sort       选中行排序
-   :'<,'>!sort -r    选中行逆序排序
-   :'<,'>!nl         选中行前加行号(nl = number lines)
-| `:w filename`  | writes the current Vim file to disk with name FILENAME |
-| `:r filename`  | retrieves disk file FILENAME and puts it below the cursor position |
-| `:r !command`  | 回放5次reads the output of the dir command and puts it below the cursor position |
-
-
-### 第7层:宏(重复性操作自动化):
+### 第5层:宏(重复性操作自动化):
 
 | 命令         | 作用                      |
 |--------------|---------------------------|
@@ -180,7 +187,7 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 
 **注意**:VSCodeVim 的宏/Ex 替换偶尔跟原生 vim 行为不完全一致,大批量重放前先用 2-3 行小范围验证。
 
-### 第8层:标记与跳转历史
+### 第6层:标记与跳转历史
 
 | 命令 | 作用 |
 |---|---|
@@ -188,7 +195,7 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `` `a `` | 跳回标记 a |
 | `Ctrl-o` / `Ctrl-i` | 跳转历史后退/前进 |
 
-### 第9层:set command
+### 第7层:set command
 :set nu -- display line number
 :set nonu -- not display line number
 :set hls -- highlight all matching phrases
@@ -235,26 +242,94 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 1. Keystrokes command. 
    Keystrokes               Effect
    ----------------------------------------------------------------------------------
-   | <C-:[range]delete [x]                   Delete back one character (backspace)                  |
-   | <C-w>                   Delete back one word                                   |
-   | <C-u>                   Delete back to start of line                           |
+   | :[range]delete [x]      Delete specified lines [into register x]               |
    ----------------------------------------------------------------------------------
-   | <Esc>                   Switch to Normal mode                                  |
-   | <C-[>                   Switch to Normal mode                                  |
-   | <C-o>                   Switch to Insert Normal mode                           |
+   | :[range]yank   [x]      Yank specified lines [into register x]                 |
    ----------------------------------------------------------------------------------
-   | <C-v>{123}              Insert character by decimal code                       |
-   | <C-v>u{1234}            Insert character by hexadecimal code                   |
-   | <C-v>{nondigit}         Insert nondigit literally                              |
-   | <C-k>{char1}{char2}     Insert character represented by {char1}{char2} digraph |
+   | :[line]put     [x]      Put the text from register x after the specified line  |
    ----------------------------------------------------------------------------------
-   | <C-r>{register}         Insert the contents of register {register}             |
-   | <C-r><C-p>{register}    Insert the contents of register {register},            |
-   |                         fixing the indentation to match the current line       |
+   | :[range]copy {address}  Copy the specified lines to below the line specified   |
+   |                         by {address}                                           |
    ----------------------------------------------------------------------------------
+   | :[range]move {address}  move the specified lines to below the line specified   |
+   |                         by {address}                                           |
+   ----------------------------------------------------------------------------------
+   | :[range]normal {commands} Execute Normal mode {commands} on each specified line|
+   ----------------------------------------------------------------------------------
+   | :[range]join            Join the specified lines                               |
+   ----------------------------------------------------------------------------------
+   | :[range]substitute/{pat-tern}/{string}/[flags]                                 |
+   |                         Replace occurrences of {pattern} with {string} on each | 
+   |                         specified line                                         |
+   ----------------------------------------------------------------------------------
+   | :[range]global/{pattern}/[cmd]                                                 |
+   |                         Execute the Ex command [cmd] on all specified lines    |
+   |                         where the {pattern} matches                            | 
+   ----------------------------------------------------------------------------------
+2. Range display
+   Symbol                   Address
+   ----------------------------------------------------------------------------------
+   | 0                       Virtual line above first line of the file              |
+   | 1                       First line of the file                                 |
+   | .                       Line where the cursor is placed                        |
+   | $                       Last line of the file                                  |
+   | %                       The entire file (shorthand for :1,$)                   |
+   | 'm                      Line containing mark m                                 |
+   | '<                      Start of visual selection                              |
+   | '>                      First line of the file                                 |
+   ----------------------------------------------------------------------------------
+3. Other related commands
+   Keystrokes               Effect
+   ----------------------------------------------------------------------------------
+   | @:                      repeat the last Ex command                             |
+   | :%s//<C-r><C-w>/g       gets the word under the cursor                         |
+   ----------------------------------------------------------------------------------
+4. Keystrokes command. 
+   Keystrokes               Effect
+   ----------------------------------------------------------------------------------
+   | :!{cmd}                 Execute {cmd} with the shell                           |
+   | :shell                  Start a shell (return to Vim by typing exit)           |
+   | :read !{cmd}            Execute {cmd} in the shell and insert its standard     |
+   |                         output below the cursor                                |
+   | :[range]write !{cmd}    Execute {cmd} in the shell with [range] lines as       |
+   |                         standard input                                         |
+   | :[range]!{filter}       Filter the specified [range] through external          |
+   |                         program {filter}                                       |
+   ----------------------------------------------------------------------------------
+   some egs:
+   | `:!command` | 执行shell command |
+      !ls            shows a directory listing
+      !rm filename   removes file FILENAME
+   | `:'<,'>!command` | 可视模式选中后过滤:选中的行丢给外部命令处理,再用输出替换回选区 |
+      :'<,'>!sort       选中行排序
+      :'<,'>!sort -r    选中行逆序排序
+      :'<,'>!nl         选中行前加行号(nl = number lines)
+   | `:w filename`  | writes the current Vim file to disk with name FILENAME |
+   | `:r filename`  | retrieves disk file FILENAME and puts it below the cursor position |
+   | `:r !command`  | the output of the dir command and puts it below the cursor position |
 
-2. Some use rules
+5. Some use rules
 `Ctrl-v`/`Ctrl-q` 场景:多行变量声明前批量加 `static`,或多行行尾批量加 `;`——选中列,`I` 插入/`A` 追加,`Esc` 应用到所有行。
+
+1. 经典场景速查
+- `delete`: `:g/pattern/d a` 批量删除匹配行,顺手备份到寄存器 a
+- `yank`: `:g/pattern/y A` **必须用大写A追加**收集散落各处的匹配行——小写a会被`:g`逐行执行时反复覆盖,最终只剩最后一条(今天踩过的坑)
+- `put`: 配合上面yank收集完,`:$put a` 一次性倾倒到文件末尾;注意`:put`永远是linewise,即使原寄存器是charwise也会另起新行
+- `copy`(`:t`): `:g/pattern/t$` 复制匹配行到文件末尾,原处保留;比yank+put省一步,但不能像寄存器一样跨多次`:g`调用累积
+- `move`(`:m`): `:g/pattern/m$` 移动匹配行到文件末尾,原处删除,常用于"归类整理"(比如把所有TODO集中到文件底部)
+- `normal`: `:g/pattern/normal A -- reviewed` 给每个匹配行末尾批量追加统一文本,等价于对每行手动敲一遍键
+- `join`: 取消强制换行用`:.,+3join`(纯范围拼接);`:g/pattern/j`是另一种用法,只合并"含pattern的行+下一行"
+- `substitute`: `:g/keyword/s/foo/bar/g` 只在含关键词的行内替换,避免误伤全文件;正式替换前先用`n`标志统计命中数,再用`gc`逐个确认
+- `global`: 本质是"先扫描全文标记匹配行,再逐行执行cmd",不会因为删行漂移;反选版是 `:v`(等价`:g!`),`:v/pattern/d` = 只保留匹配的行
+- 补充: range 除了写行号,还能直接用搜索模式当地址,比如 `:1,/pattern/d`(删到第一次匹配该pattern的那一行,含它);行级offset(`+n`/`-n`)也能接在后面,如 `:1,/pattern/+2d`
+
+记忆规则(容易搞混的两点):
+- `n`/`N` 重放的是"上一条完整搜索命令"(pattern+offset打包),所以offset看起来被"记住"了
+- 手动重打新命令时:pattern留空=复用上次(vim明确设计的特性);**offset留空≠复用上次**,就是"没提供",按默认(≈s)处理——两者留空的含义不对称
+
+踩坑提醒:
+- `d{motion}` 删除的是"起点到落点之间的整段范围",不是只删落点处——如果pattern在文件别处也出现,搜索可能跳到很远,中间所有内容(不管是不是同一个逻辑分区)都会被扫进去删掉
+- `:p` 是 `:print`(老命令,只显示),不是 `:put` 的缩写,粘贴要用 `:put`/`:pu`
 
 ## 4. `%` 命令详解(以 chapter20/src/exer/exer_20_2.cpp 为例)
 double* high(const double* first, const double* last)
