@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>把 VSCodeVim 换成 vscode-neovim</title>
+<style>
+  :root {
+    --paper: #f5f4ef;
+    --paper-raised: #ecebe4;
+    --ink: #1c211d;
+    --ink-soft: #4b534c;
+    --line: #d8d6cb;
+    --accent: #2f6d4f;
+    --accent-strong: #234f39;
+    --accent-tint: #e3ede7;
+    --warn: #a8631f;
+    --warn-tint: #f3e6d4;
+    --code-bg: #14201a;
+    --code-fg: #dbe6de;
+    --code-dim: #7fa08d;
+    --mono: ui-monospace, "JetBrains Mono", "Cascadia Code", "SF Mono", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, "Segoe UI", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    font-size: 16px;
+  }
+
+  a { color: var(--accent-strong); }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    .toc { display: none; }
+  }
+
+  .toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 40px 20px 40px 28px;
+    border-right: 1px solid var(--line);
+  }
+
+  .toc-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+
+  .toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .toc a {
+    display: flex;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--ink);
+    font-size: 13.5px;
+  }
+
+  .toc a:hover { background: var(--paper-raised); }
+
+  .toc .num {
+    font-family: var(--mono);
+    color: var(--accent);
+    font-weight: 600;
+    width: 1.4em;
+  }
+
+  main { padding: 48px 40px 100px; min-width: 0; }
+
+  @media (max-width: 860px) { main { padding: 32px 20px 80px; } }
+
+  .hero {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 32px;
+    margin-bottom: 40px;
+  }
+
+  .hero .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+    margin: 0 0 12px;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    color: var(--accent-strong);
+  }
+
+  .hero p {
+    max-width: 640px;
+    color: var(--ink-soft);
+    font-size: 16px;
+    margin: 0;
+  }
+
+  .scope-card {
+    margin-top: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .chip {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--accent-tint);
+    color: var(--accent-strong);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 12px;
+  }
+
+  section {
+    max-width: 700px;
+    margin: 0 0 56px;
+    scroll-margin-top: 20px;
+  }
+
+  section > .step-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  section > .step-head .num {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--accent);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  h2 {
+    font-family: var(--mono);
+    font-size: 21px;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--accent-strong);
+    margin: 28px 0 10px;
+  }
+
+  p { margin: 0 0 14px; }
+  ul, ol.plain { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+
+  .note {
+    color: var(--ink-soft);
+    font-size: 14.5px;
+  }
+
+  code.inline {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--paper-raised);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .placeholder {
+    color: var(--accent-strong);
+    background: var(--accent-tint);
+    border-radius: 3px;
+    padding: 0 3px;
+  }
+
+  .codeblock {
+    position: relative;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: 10px;
+    margin: 0 0 16px;
+    overflow-x: auto;
+  }
+
+  .codeblock .tag {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--code-dim);
+  }
+
+  .codeblock pre {
+    margin: 0;
+    padding: 18px 20px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+    white-space: pre;
+  }
+
+  .codeblock .c { color: var(--code-dim); }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-tint);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 0 0 16px;
+    font-size: 14.5px;
+  }
+
+  .callout.warn {
+    border-left-color: var(--warn);
+    background: var(--warn-tint);
+  }
+
+  .callout strong { display: block; margin-bottom: 4px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .callout.warn strong { color: var(--warn); }
+  .callout:not(.warn) strong { color: var(--accent-strong); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 0 0 16px;
+  }
+
+  .table-wrap { overflow-x: auto; margin-bottom: 16px; }
+
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  td code.inline { white-space: nowrap; }
+
+  .checklist { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 10px; }
+  .checklist li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 14px;
+    background: var(--paper-raised);
+    border-radius: 8px;
+  }
+  .checklist .box {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-top: 3px;
+    border: 1.5px solid var(--accent);
+    border-radius: 4px;
+  }
+
+  .pitfall {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+
+  .pitfall h4 {
+    font-family: var(--mono);
+    font-size: 14px;
+    margin: 0 0 6px;
+    color: var(--warn);
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+
+  .pitfall .symptom { color: var(--ink-soft); font-size: 13.5px; margin: 0 0 8px; }
+  .pitfall .fix { margin: 0; font-size: 14.5px; }
+  .pitfall .fix b { color: var(--accent-strong); }
+
+  footer {
+    max-width: 700px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+
+  footer a { display: block; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <nav class="toc" aria-label="目录">
+    <p class="toc-label">目录</p>
+    <ol>
+      <li><a href="#scope"><span class="num">0</span>适用范围</a></li>
+      <li><a href="#check"><span class="num">1</span>环境自检</a></li>
+      <li><a href="#install-nvim"><span class="num">2</span>安装 Neovim</a></li>
+      <li><a href="#swap-ext"><span class="num">3</span>换插件</a></li>
+      <li><a href="#settings"><span class="num">4</span>配置桥接</a></li>
+      <li><a href="#initlua"><span class="num">5</span>init.lua</a></li>
+      <li><a href="#verify"><span class="num">6</span>验证</a></li>
+      <li><a href="#pitfalls"><span class="num">7</span>踩坑记录</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <p class="eyebrow">安装教程 · 从公司电脑迁移过来的记录</p>
+      <h1>把 VSCodeVim 换成 vscode-neovim</h1>
+      <p>这份教程照抄了在公司电脑上真实走过一遍、验证成功的步骤。每条命令都是实际跑过的原样命令,不是网上抄的通用版；带 <code class="inline placeholder">占位符</code> 样式的地方需要换成你自己电脑上的值。</p>
+      <div class="scope-card">
+        <span class="chip">Windows + WSL</span>
+        <span class="chip">VS Code Remote-WSL</span>
+        <span class="chip">Neovim ≥ 0.10.0</span>
+      </div>
+    </header>
+
+    <section id="scope">
+      <div class="step-head"><span class="num">0</span><h2>适用范围</h2></div>
+      <p>默认假设你家里电脑也是 <strong>Windows + WSL</strong>，VS Code 通过 <strong>Remote-WSL</strong> 连过去编辑 —— 跟公司这台机器同一套组合，下面的步骤可以整段照搬。</p>
+      <div class="callout">
+        <strong>如果家里不是这套组合</strong>
+        如果是纯 Windows（没有 WSL）、macOS 或者 Linux 桌面：跳过所有 <code class="inline">useWSL</code> 相关的配置，第 4 步的 <code class="inline">vscode-neovim.neovimExecutablePaths.win32</code>（或 <code class="inline">.darwin</code> / <code class="inline">.linux</code>）直接填本机安装的 nvim 路径就行，其余步骤基本不变。
+      </div>
+    </section>
+
+    <section id="check">
+      <div class="step-head"><span class="num">1</span><h2>环境自检</h2></div>
+      <p>先在<strong>自己家里的电脑</strong>上跑这三条，不要照抄公司电脑查出来的值 —— 发行版名字、apt 版本这些每台机器都可能不一样。</p>
+      <div class="codeblock">
+        <span class="tag">bash · WSL 里跑</span>
+        <pre><span class="c"># 1. 自己的 WSL 发行版名字（配置里要填这个）</span>
+echo $WSL_DISTRO_NAME
+
+<span class="c"># 2. apt 仓库里的 neovim 版本够不够 0.10.0</span>
+apt-cache policy neovim
+
+<span class="c"># 3. systemd 有没有启用，决定能不能用 snap</span>
+systemctl is-system-running</pre>
+      </div>
+      <p class="note">公司这台机器实测：发行版是 <code class="inline">Ubuntu-22.04</code>，apt 候选版本只有 <code class="inline">0.6.1</code>（太旧），systemd 是 <code class="inline">running</code>（snap 能用）。家里大概率也会撞到"apt 版本太旧"这个情况，第 2 步已经准备了应对方案。</p>
+    </section>
+
+    <section id="install-nvim">
+      <div class="step-head"><span class="num">2</span><h2>安装 Neovim ≥ 0.10.0</h2></div>
+      <p>两条路二选一，取决于你能不能拿到一个真正的交互式终端来输 sudo 密码。</p>
+
+      <h3>方式 A：snap（更省事，前提是有真终端）</h3>
+      <div class="codeblock">
+        <span class="tag">bash</span>
+        <pre>sudo snap install nvim --classic
+which nvim   <span class="c"># 确认路径，通常是 /snap/bin/nvim</span></pre>
+      </div>
+      <div class="callout warn">
+        <strong>公司这次踩的坑</strong>
+        这条命令在自动化脚本/AI 会话里跑会失败：<code class="inline">sudo: a terminal is required to read the password</code>。必须在一个真正能输密码的终端窗口（Windows Terminal / WSL 自带终端）里手动跑，不能用什么脚本代跑。
+      </div>
+
+      <h3>方式 B：官方预编译包（免 sudo，公司这次实际走的路）</h3>
+      <div class="codeblock">
+        <span class="tag">bash</span>
+        <pre>curl -fL -o nvim-linux-x86_64.tar.gz \
+  https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+
+mkdir -p ~/.local
+tar xzf nvim-linux-x86_64.tar.gz -C ~/.local --strip-components=1
+
+<span class="c"># 确认装上了</span>
+~/.local/bin/nvim --version</pre>
+      </div>
+      <p>把 <code class="inline">~/.local/bin</code> 加进 <code class="inline">PATH</code>（编辑 <code class="inline">~/.zshrc</code> 或 <code class="inline">~/.bashrc</code>）：</p>
+      <div class="codeblock">
+        <span class="tag">~/.zshrc</span>
+        <pre>export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH</pre>
+      </div>
+      <p class="note">Oh My Zsh 的默认模板里这行本来就有，只是被注释掉了（<code class="inline">#</code> 开头），去掉井号即可，不用整行重新加。改完 <code class="inline">source ~/.zshrc</code> 或者重开一个终端窗口。</p>
+    </section>
+
+    <section id="swap-ext">
+      <div class="step-head"><span class="num">3</span><h2>卸载 VSCodeVim，装上 vscode-neovim</h2></div>
+      <p>两者会因为抢注 VS Code 的 <code class="inline">type</code> 命令冲突，必须先卸载旧的再装新的，顺序不能反。</p>
+      <div class="codeblock">
+        <span class="tag">bash · 有 code CLI 的话可以直接跑</span>
+        <pre>code --uninstall-extension vscodevim.vim
+code --install-extension asvetliakov.vscode-neovim</pre>
+      </div>
+      <p class="note">也可以在 VS Code 扩展面板里手动搜「VSCodeVim」卸载、搜「VSCode Neovim」（发布者 <code class="inline">asvetliakov</code>）装上，效果一样。</p>
+      <div class="callout warn">
+        <strong>装完先别急着测</strong>
+        卸载/安装扩展之后，当前打开的这个 VS Code 窗口用的还是旧的扩展宿主进程 —— 也就是说 VSCodeVim 卡在内存里还没退场，这时候测试会看到"两个插件好像都在生效"的诡异现象。必须 <code class="inline">Ctrl+Shift+P</code> → <code class="inline">Developer: Reload Window</code> 完整重启一次窗口，才算真正切换过去。
+      </div>
+    </section>
+
+    <section id="settings">
+      <div class="step-head"><span class="num">4</span><h2>配置桥接到 WSL 的 Neovim</h2></div>
+      <div class="callout warn">
+        <strong>最容易踩的坑：改错了 settings.json</strong>
+        Remote-WSL 场景下有<strong>两份</strong>用户设置：VSCodeVim 那套 <code class="inline">vim.*</code> 配置存在 "Remote [WSL]" 这份里；但下面这几条 <code class="inline">vscode-neovim.*</code> 设置要加到<strong>本地（Windows 侧）</strong>的 User settings.json —— 两个文件互不相通，改错文件会出现"设置了但完全没反应"。命令面板跑 <code class="inline">Preferences: Open User Settings (JSON)</code> 打开的就是本地那份，不要跑带"Remote"字样的那个命令。
+      </div>
+      <div class="codeblock">
+        <span class="tag">json · 本地 User settings.json</span>
+        <pre>{
+  "vscode-neovim.useWSL": true,
+  "vscode-neovim.wslDistribution": "<span class="c">你自己的发行版名字，第1步查到的</span>",
+  "vscode-neovim.neovimExecutablePaths.linux": "<span class="c">你自己的 nvim 路径，第2步 which nvim 查到的</span>",
+  "vscode-neovim.ctrlKeysForNormalMode": [
+    "a", "b", "d", "e", "f", "h", "i", "j", "k", "l",
+    "m", "o", "q", "r", "t", "u", "v", "w", "x", "y", "z", "/", "]"
+  ]
+}</pre>
+      </div>
+      <p><code class="inline">ctrlKeysForNormalMode</code> 是普通模式下"哪些 Ctrl 组合键会被转发给真 Neovim"的白名单，<strong>默认值不包含 <code class="inline">q</code></strong>。上面这份已经手动加上了 <code class="inline">q</code>（配合第5步 <code class="inline">&lt;C-q&gt;</code> 的 remap）。如果你家里的 <code class="inline">.vimrc</code> 还有别的自定义 Ctrl 键 remap，照着这个思路把对应字母也加进这个数组，否则按键会悄无声息地没反应。</p>
+    </section>
+
+    <section id="initlua">
+      <div class="step-head"><span class="num">5</span><h2>写 <code class="inline">init.lua</code></h2></div>
+      <p>Neovim 的配置在 WSL 这一侧：<code class="inline">~/.config/nvim/init.lua</code>。下面是这次在公司电脑上验证跑通、零报错的完整版本，照抄即可，再按自己 <code class="inline">.vimrc</code> 里的其他自定义内容增补。</p>
+      <div class="codeblock">
+        <span class="tag">lua · ~/.config/nvim/init.lua</span>
+        <pre><span class="c">-- 自动引导 vim-plug（Neovim 专用路径，跟老版 vim 的 plug.vim 是分开的）</span>
+local plug_path = vim.fn.stdpath('data') .. '/site/autoload/plug.vim'
+if vim.fn.empty(vim.fn.glob(plug_path)) > 0 then
+  vim.fn.system({
+    'curl', '-fLo', plug_path, '--create-dirs',
+    'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim',
+  })
+  vim.cmd('autocmd VimEnter * PlugInstall --sync | source $MYVIMRC')
+end
+
+vim.cmd('call plug#begin()')
+vim.cmd("Plug 'junegunn/vim-easy-align'")
+vim.cmd('call plug#end()')
+
+<span class="c">-- ga 触发对齐（原 .vimrc 里的 vim-plug 插件迁移过来）</span>
+vim.keymap.set('x', 'ga', '&lt;Plug&gt;(EasyAlign)')
+vim.keymap.set('n', 'ga', '&lt;Plug&gt;(EasyAlign)')
+
+<span class="c">-- matchit 是 Neovim 自带的 runtime 包，让 % 匹配更聪明</span>
+vim.cmd('packadd! matchit')
+
+vim.opt.hlsearch = true
+vim.opt.backup = true
+vim.opt.undofile = true
+
+<span class="c">-- Ctrl+Q 代替被终端占用的 Ctrl+V 进入 Visual Block
+-- 需要配合第4步 settings.json 里 ctrlKeysForNormalMode 加上 "q"</span>
+vim.keymap.set('n', '&lt;C-q&gt;', '&lt;C-v&gt;')
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'text',
+  command = 'setlocal textwidth=78',
+})</pre>
+      </div>
+      <div class="callout">
+        <strong>不用照搬的两条</strong>
+        原 <code class="inline">.vimrc</code> 里的 <code class="inline">set number</code> / <code class="inline">set relativenumber</code> 不要搬进来 —— 行号这类"编辑器外观"由 VS Code 接管，Neovim 自己设置在嵌入模式下不生效。改成 VS Code 原生设置 <code class="inline">"editor.lineNumbers": "relative"</code>（跟第4步的 settings.json 加在一起就行）。
+      </div>
+    </section>
+
+    <section id="verify">
+      <div class="step-head"><span class="num">6</span><h2>Reload + 验证清单</h2></div>
+      <p><code class="inline">Ctrl+Shift+P</code> → <code class="inline">Developer: Reload Window</code>，然后依次确认：</p>
+      <ul class="checklist">
+        <li><span class="box"></span>打开一个文件，normal / insert 模式切换时光标样式有变化</li>
+        <li><span class="box"></span><code class="inline">&lt;C-q&gt;</code> 能进入 Visual Block 模式</li>
+        <li><span class="box"></span>选中几行文字按 <code class="inline">ga</code> 再按 <code class="inline">=</code>，等号能自动对齐</li>
+        <li><span class="box"></span>敲一条 <code class="inline">:join</code> 或 <code class="inline">:g/pattern/normal @q</code>，VSCodeVim 从没支持过的命令现在能跑通</li>
+      </ul>
+    </section>
+
+    <section id="pitfalls">
+      <div class="step-head"><span class="num">7</span><h2>踩坑记录汇总</h2></div>
+
+      <div class="pitfall">
+        <h4>apt 里的 neovim 版本太旧</h4>
+        <p class="symptom">症状：<code class="inline">apt install neovim</code> 装完之后 vscode-neovim 报版本不够 / 功能异常。</p>
+        <p class="fix">对策：<b>不要用 apt</b>，走第2步的 snap 或官方 tarball 二选一。</p>
+      </div>
+
+      <div class="pitfall">
+        <h4>sudo 卡住不动</h4>
+        <p class="symptom">症状：<code class="inline">sudo: a terminal is required to read the password</code>，或者密码怎么输都不生效。</p>
+        <p class="fix">对策：换免 sudo 的官方 tarball 方式（第2步方式B），或者确保是在真正的交互式终端窗口里手动输密码，不是脚本/自动化在代跑。</p>
+      </div>
+
+      <div class="pitfall">
+        <h4>settings.json 改了但没生效</h4>
+        <p class="symptom">症状：<code class="inline">vscode-neovim.*</code> 设置加了，重启也没用。</p>
+        <p class="fix">对策：检查是不是改到了 "Remote [WSL]" 那份设置里 —— 这些设置要放在<b>本地/Windows 侧</b>的 User settings.json（见第4步）。</p>
+      </div>
+
+      <div class="pitfall">
+        <h4>自定义 Ctrl 键 remap 没反应</h4>
+        <p class="symptom">症状：<code class="inline">.vimrc</code> 里配的 <code class="inline">&lt;C-某键&gt;</code> remap 迁移过来后按了没反应。</p>
+        <p class="fix">对策：检查 <code class="inline">ctrlKeysForNormalMode</code>（或插入模式下的 <code class="inline">ctrlKeysForInsertMode</code>）白名单里有没有这个字母，默认列表不包含所有字母，没在名单里的键 VS Code 根本不会转发给 Neovim。</p>
+      </div>
+
+      <div class="pitfall">
+        <h4>vim-plug 第一次冷启动报错</h4>
+        <p class="symptom">症状：全新环境第一次打开 Neovim，提示 <code class="inline">E117: Unknown function: plug#begin</code>。</p>
+        <p class="fix">对策：这是正常的自愈过程 —— <code class="inline">init.lua</code> 里的 <code class="inline">autocmd VimEnter</code> 会自动触发一次 <code class="inline">PlugInstall</code> 并重新加载配置，走完这一轮之后再打开就不会再报错了，不用手动干预。</p>
+      </div>
+
+      <div class="pitfall">
+        <h4>卸载了 VSCodeVim，感觉还在生效</h4>
+        <p class="symptom">症状：扩展面板里已经卸载，但按键行为看起来还是老样子。</p>
+        <p class="fix">对策：没有 <code class="inline">Reload Window</code>。旧的扩展宿主进程还在内存里跑，卸载要重启窗口才算真正生效（见第3步）。</p>
+      </div>
+    </section>
+
+    <footer>
+      <p class="toc-label" style="margin-bottom:10px">参考链接</p>
+      <a href="https://github.com/vscode-neovim/vscode-neovim" target="_blank" rel="noopener">github.com/vscode-neovim/vscode-neovim —— 插件源码 + README</a>
+      <a href="https://github.com/neovim/neovim/releases" target="_blank" rel="noopener">github.com/neovim/neovim/releases —— 官方预编译包下载</a>
+      <a href="https://github.com/junegunn/vim-easy-align" target="_blank" rel="noopener">github.com/junegunn/vim-easy-align —— ga 对齐插件</a>
+      <a href="https://github.com/junegunn/vim-plug" target="_blank" rel="noopener">github.com/junegunn/vim-plug —— Neovim 插件管理器</a>
+    </footer>
+  </main>
+</div>
+</body>
+</html>
