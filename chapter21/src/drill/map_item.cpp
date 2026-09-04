@@ -11,6 +11,8 @@
 #include "Item.h"
 #include <vector>
 
+const std::string DATA = DATA_DIR;
+
 int main()
 {
    std::vector<Item> vec;

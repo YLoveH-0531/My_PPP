@@ -1,5 +1,6 @@
 #ifndef ITEM_H
 #define ITEM_H
+#include <ostream>
 #include <string>
 
 struct Item { 
@@ -10,5 +11,7 @@ struct Item {
     Item(std::string n, int i, double v) // 显式构造函数，emplace_back 需要它来做"原地构造"
         : name{std::move(n)}, iid{i}, value{v} {}
 };
+
+std::ostream& operator<<(std::ostream& os, const Item& it);
 
 #endif // ITEM_H
