@@ -55,6 +55,8 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 唯一纪律:改完字立刻 `Esc` 回 Normal 模式,效率来自"待在 Normal 模式里发号施令"。
 
 ## 3. 分层命令参考(按学习顺序排列,不要跳级)
+@@some rules
+  rule one: The Ideal: One Keystroke to Move, One Keystroke to Execute
 ## Normal mode ##
 ### 第1层:进出 Insert 模式
 
@@ -75,6 +77,12 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 | `h j k l` | 左下上右 |
 | `w`/ `e` / `b` | 下一个单词词头/下一个单词词尾/上一个单词头 |
 | `0` / `$` | 行首/行尾 |
+| f{char} |	查找并跳到下一个字符 {char}	向右 (Forward)
+| F{char} |	查找并跳到上一个字符 {char}	向左 (Backward)
+| t{char} |	查找并跳到下一个字符 {char} 之前 	向右
+| T{char} |	查找并跳到上一个字符 {char} 之后 	向左
+| ; |	重复上 一次的 f、F |、t 或 T 查找	与上次相同
+| ,	| 反向重复上 一次的 f、F |、t 或 T 查找	与上次相反
 | `gg` / `G` | 文件开头/结尾 |
 | `:` | 跳到某行 |
 | `num|` | 跳到某列 |
@@ -99,6 +107,7 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 |  `x`  | 删光标处字符 |
 |  `r`  | 替换光标处一个字符 |
 |  `R`  | 替换光标处连续几个字符 |
+|  `s`  |The s command compounds two steps into one: it deletes the character under the cursor and then enters Insert mode |
 |  `dd` | 删整行 |
 |  `cc` | 删整行, 并且进入到insert模式|
 |  `yy` | 复制整行 |
@@ -208,8 +217,7 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 :set nois -- not show partial matches for a search phrase 
 
 ## insert mode ##
-1. Keystrokes command. 
-   Keystrokes               Effect
+1. Keystrokes                Effect
    ----------------------------------------------------------------------------------
    | <C-h>                   Delete back one character (backspace)                  |
    | <C-w>                   Delete back one word                                   |
@@ -231,11 +239,14 @@ vim 是三种模式的切换,不是"加了快捷键的编辑器":
 
 ## visual mode ##
 1. Keystrokes command. 
-   Keystrokes               Effect
+   Keystrokes                Effect
    ----------------------------------------------------------------------------------
    | v 		                 Enable character-wise Visual mode                      |
    | V 		                 Enable line-wise Visual mode                           |
+   | v 		                 Enable character-wise Visual mode                      |
+   | V 		                 Enable line-wise Visual mode                           |
    | <C-v>	                 Enable block-wise Visual mode                          | 
+   | gv		                 Reselect the last visual selection                     |      
    | gv		                 Reselect the last visual selection                     |      
    | o                       Go to other end of highlighted text                    |      
    ----------------------------------------------------------------------------------

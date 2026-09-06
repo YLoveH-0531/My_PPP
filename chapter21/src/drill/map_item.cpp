@@ -8,13 +8,11 @@
  * @copyright Copyright (c) 2026
  */
 
-#include "Item.h"
-#include <vector>
-
-const std::string DATA = DATA_DIR;
+#include <map>
+#include <string> 
 
 int main()
 {
-   std::vector<Item> vec;
+   std::map<std::string, int> msi;
 }
 
