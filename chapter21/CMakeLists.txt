@@ -1,5 +1,9 @@
 get_filename_component(CURRENT_DIR_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
+# date.h (Howard Hinnant's date library) uses C++14 digit separators; the project-wide
+# C++11 standard can't even lex this header. Scoped to chapter21 since only it uses date.h.
+set(CMAKE_CXX_STANDARD 17)
+
 set(SUB_DIRECTORIES "drill" "exer")
 
 add_compile_definitions(DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/")
@@ -56,3 +60,15 @@ foreach(sub_dir ${SUB_DIRECTORIES})
 endforeach()
 
 message(STATUS "[${CURRENT_DIR_NAME}] Found and configured targets: ${ALL_TARGETS}")
+
+# exer_21_11/12 (GUI exercises) need FLTK. Scoped to just those two targets so the rest
+# of chapter21 keeps configuring/building fine even before libfltk1.3-dev is installed.
+find_package(FLTK)
+if(FLTK_FOUND)
+    foreach(fltk_target "exer_21_11" "exer_21_12")
+        if(TARGET ${fltk_target})
+            target_include_directories(${fltk_target} PRIVATE ${FLTK_INCLUDE_DIR})
+            target_link_libraries(${fltk_target} PRIVATE fltk_SHARED)
+        endif()
+    endforeach()
+endif()
