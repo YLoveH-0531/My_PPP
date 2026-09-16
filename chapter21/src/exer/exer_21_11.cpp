@@ -8,6 +8,7 @@
  * @copyright Copyright (c) 2026
  */
 
+/*
 #include "Order.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
@@ -128,4 +129,10 @@ int main()
     win.end();
     win.show();
     return Fl::run();
+}
+*
+*/
+int main()
+{
+    return 0;
 }

@@ -8,6 +8,7 @@
  * @copyright Copyright (c) 2026
  */
 
+/*
 #include "Order.h"
 #include "OrderQuery.h"
 #include <FL/Fl.H>
@@ -97,4 +98,9 @@ int main()
     win.end();
     win.show();
     return Fl::run();
+}
+*/
+int main()
+{
+    return 0;
 }
