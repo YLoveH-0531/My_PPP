@@ -1,0 +1,39 @@
+/**
+ * @file Mail_main.cpp
+ * @author KaKaRot
+ * @brief 
+ * @version 0.1
+ * @date 2026-09-16
+ * 
+ * @copyright Copyright (c) 2026
+ */
+
+#include "Mail_Program.h"
+#include <iostream>
+#include <map>
+#include <utility>
+
+#ifndef DATA_DIR
+#error "DATA_DIR must be defined by CMake. Use cmake to build this project."
+#endif
+
+const std::string DATA = DATA_DIR;
+typedef std::multimap<std::string, const Message*>::iterator map_it;
+
+int main()
+{
+    std::string filename(DATA + "Mail_data.txt");
+    Mail_file mail(filename);
+    
+    std::multimap<std::string, const Message*> mail_map;
+    for (const auto& item : mail) {
+        std::string key;
+        if(find_by_address(&item, key)) mail_map.insert(std::make_pair(key, &item));
+    }
+
+    auto pp = mail_map.equal_range("John Doe <jdoe@machine.example>");
+    for (map_it p = pp.first; p != pp.second; ++p) {
+        std::cout << find_subject(p->second) << "\n";
+    }
+    return 0;
+}
