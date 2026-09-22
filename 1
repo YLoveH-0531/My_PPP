@@ -39,7 +39,6 @@ int main()
             std::cerr << "Header line is not valid" << std::endl;
             return 1;
         }
-        std::cout << "Header OK: " << line << '\n';
     }
     
     int boycnt = 0;
@@ -63,25 +62,21 @@ int main()
             return 1;
         }
 
-        std::cout << match[1].str() << ": boys=" << boyrow << " girls=" << grilrow << " total=" << total << '\n';
-
         if (match[1] == "Alle klasser") {
             if(boycnt != boyrow) {
                 std::cerr << "boys don't add up\n" << std::endl;
                 return 1;
-            }
+            } 
             if (girlcnt != grilrow) {
                 std::cerr << "girls don't add up\n" << std::endl;
                 return 1;
             }
-
+            
             if (!(in >> std::ws).eof()) {
                 std::cerr << "Data line " << linenum + 1 << " is not valid: extra data after Alle klasser" << std::endl;
                 return 1;
             }
-
-            std::cout << "All classes check out: " << boycnt << " boys, " << girlcnt << " girls, "
-                       << boycnt + girlcnt << " total.\n";
+            
             return 0;
         }
         boycnt += boyrow;

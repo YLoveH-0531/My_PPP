@@ -1,6 +1,7 @@
 #ifndef MAIL_PROGRAM_H
 #define MAIL_PROGRAM_H
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,7 @@ struct Mail_file{
     std::string name;
     std::vector<std::string> lines;
     std::vector<Message> letter;
+    std::multimap<std::string, const Message*> sub_map;
 
     iter begin() const { return letter.begin(); }
     iter end() const { return letter.end(); }

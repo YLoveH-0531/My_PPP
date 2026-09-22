@@ -35,5 +35,28 @@ int main()
     for (map_it p = pp.first; p != pp.second; ++p) {
         std::cout << find_subject(p->second) << "\n";
     }
+    
+    // output subject
+    std::cout << "input the subject:";
+    std::string search;
+    while (std::getline(std::cin, search)){
+        auto pp = mail.sub_map.equal_range(search);
+        if (pp.first == pp.second) {
+            std::cout << "Not found!" << std::endl;
+            std::cout << "\ninput the subject:";
+            continue;
+        }
+        std::cout << "find " << search << ": " << std::endl;
+        int mnu = 1;
+        for(auto p = pp.first; p != pp.second; ++p) {
+            std::cout << "  Message " << mnu << std::endl;
+            for (const auto& line : *(p->second)) {
+                std::cout << "    " << line << std::endl;
+            }
+            ++mnu;
+        }
+        std::cout << "\ninput the subject:";
+    }
+
     return 0;
 }
