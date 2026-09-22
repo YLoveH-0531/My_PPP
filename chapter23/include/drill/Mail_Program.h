@@ -38,6 +38,10 @@ struct Mail_file{
 
 bool find_by_address(const Message* m, std::string& s);
 
+bool find_by_address_regex(const Message* m, std::string& s);
+
 std::string find_subject(const Message* m);
+
+std::string find_subject_regex(const Message* m);
 
 #endif // MAIL_PROGRAM_H

@@ -33,7 +33,8 @@ int main()
 
     auto pp = mail_map.equal_range("John Doe <jdoe@machine.example>");
     for (map_it p = pp.first; p != pp.second; ++p) {
-        std::cout << find_subject(p->second) << "\n";
+        //std::cout << find_subject(p->second) << "\n";
+        std::cout << find_subject_regex(p->second) << "\n";
     }
     
     // output subject
@@ -42,7 +43,7 @@ int main()
     while (std::getline(std::cin, search)){
         auto pp = mail.sub_map.equal_range(search);
         if (pp.first == pp.second) {
-            std::cout << "Not found!" << std::endl;
+        std::cout << "Not found!" << std::endl;
             std::cout << "\ninput the subject:";
             continue;
         }

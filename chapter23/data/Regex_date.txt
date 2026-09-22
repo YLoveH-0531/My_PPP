@@ -1,0 +1,16 @@
+Today is 12/24/2000.
+The meeting is on 1/2/2000.
+Invalid date: 13/45/2000.
+ISO date: 2000-12-24.
+European date: 24/12/2000.
+Dots: 12.24.2000.
+Month name: December 24, 2000.
+Short month: Dec 24, 2000.
+No date on this line.
+Another date 12-24-2000.
+Two dates: 1/1/2001 and 2/2/2002.
+Phone: 123/456-7890.
+Version: 1.2.3.4.
+Time: 12:24:2000.
+Day month year: 24 December 2000.
+ISO slash: 2000/12/24.

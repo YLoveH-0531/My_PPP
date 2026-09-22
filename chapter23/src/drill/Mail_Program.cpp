@@ -61,12 +61,11 @@ bool find_by_address_regex(const Message *m, std::string &s){
     for (const auto& item : *m) {
         std::smatch match;
         if (std::regex_search(item, match, addr_re)) {
-            s = std::string(item, n + 1);
+            s = match[1].str(); 
             return true;
         }
     }
     return false;
-    
 }
 
 std::string find_subject(const Message *m) {
@@ -77,3 +76,11 @@ std::string find_subject(const Message *m) {
     return std::string();
 }
 
+std::string find_subject_regex(const Message *m) {
+    for (const auto &item : *m) {
+        std::smatch result;
+        if (std::regex_search(item, result, sub_re))
+            return result[0].str();
+    }
+    return std::string();
+}
