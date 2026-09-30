@@ -31,9 +31,9 @@ int main()
     std::string line;
     int linenum = 0;
     std::regex re_date(
-        R"((\d{1,2}[./-]\d{1,2}[./-]\d{2,4})"
-        R"(|(\d{4}[./-]\d{1,2}[./-]\d{1,2})"
-        R"(|((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{2,4})"
+        R"((\d{1,2}[./-]\d{1,2}[./-]\d{2,4}))"
+        R"(|(\d{4}[./-]\d{1,2}[./-]\d{1,2}))"
+        R"(|((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{2,4}))"
         R"(|(\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{2,4}))",
         std::regex::icase);
     std::smatch result;
@@ -41,7 +41,7 @@ int main()
     while (std::getline(io, line)) {
         ++linenum;
         if (std::regex_search(line, result, re_date)) {
-            std::cout << linenum << ": " << line << " -- " << result[0].str();
+            std::cout << linenum << ": " << line << " -- " << result[0].str() << std::endl;
         }
     }
     return 0;
