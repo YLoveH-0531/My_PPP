@@ -1,7 +1,7 @@
 /**
  * @file test_raii.cpp
  * @author KaKaRot
- * @brief Example for cpp-knowledge/03-memory-resource/RAII_summary.md: construction failure,
+ * @brief Example for cpp-knowledge/03-memory-resource/RAII.md: construction failure,
  *        stack unwinding, ownership transfer, lock_guard
  * @version 0.1
  * @date 2026-10-29
